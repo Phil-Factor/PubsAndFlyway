@@ -362,28 +362,6 @@ SET @Success = 1
 SET NOEXEC OFF
 IF (@Success = 1) 
 begin
-Declare @Version Varchar(20)
-Declare @DatabaseInfo nvarchar(3000)
-SET @version = N'1.1.3';
-SELECT @DatabaseInfo =
-  (
-  SELECT 'Pubs' AS "Name", @version AS "Version",
-    'The Pubs (publishing) Database supports a fictitious publisher.' AS "Description",
-    GetDate() AS "Modified", SUser_Name() AS "by"
-  FOR JSON PATH
-  );
-
-IF NOT EXISTS
-  (
-  SELECT fn_listextendedproperty.name, fn_listextendedproperty.value
-    FROM sys.fn_listextendedproperty(
-N'Database_Info', DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT
-))
-  
-  EXEC sys.sp_addextendedproperty @name = N'Database_Info',
-@value = @DatabaseInfo;
-ELSE EXEC sys.sp_updateextendedproperty @name = N'Database_Info',
-@value = @DatabaseInfo;
 PRINT 'The database update succeeded'
 end
 ELSE BEGIN

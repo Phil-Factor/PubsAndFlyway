@@ -8812,7 +8812,7 @@ INSERT INTO [dbo].[titleauthor] ([au_id], [title_id], [au_ord], [royaltyper]) VA
 --switch on all constraints
 EXEC sp_MSforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL';
 -- Reseed identity columns if the table has an identity column
-EXEC sp_MSforeachtable 'IF ObjectPropertyEx(Object_Id(''?''),''TableHasIdentity'')=1 DBCC CHECKIDENT (''?'', RESEED, 0)';
+-- EXEC sp_MSforeachtable 'IF ObjectPropertyEx(Object_Id(''?''),''TableHasIdentity'')=1 DBCC CHECKIDENT (''?'', RESEED, 0)';
 -- and enable all triggers
 ENABLE TRIGGER ALL ON DATABASE;
 Declare @Version Varchar(20)

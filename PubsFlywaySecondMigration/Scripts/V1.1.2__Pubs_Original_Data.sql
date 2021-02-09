@@ -1580,26 +1580,3 @@ INSERT employee VALUES
 ( 'GHT50241M', N'Gary', 'H', 'Thomas', 9, 170, '0736    ', N'1988-08-09T00:00:00' ), 
 ( 'DBT39435M', N'Daniel', 'B', 'Tonini', 11, 75, '0877    ', N'1990-01-01T00:00:00' )
 go
-Declare @Version Varchar(20)
-SET @version = N'1.1.2';
-Declare @DatabaseInfo nvarchar(3000)
-SELECT @DatabaseInfo =
-  (
-  SELECT 'Pubs' AS "Name", @version AS "Version",
-    'The Pubs (publishing) Database supports a fictitious publisher.' AS "Description",
-    GetDate() AS "Modified", SUser_Name() AS "by"
-  FOR JSON PATH
-  );
-
-IF NOT EXISTS
-  (
-  SELECT fn_listextendedproperty.name, fn_listextendedproperty.value
-    FROM sys.fn_listextendedproperty(
-N'Database_Info', DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT
-)
-  )
-  EXEC sys.sp_addextendedproperty @name = N'Database_Info',
-@value = @DatabaseInfo;
-ELSE EXEC sys.sp_updateextendedproperty @name = N'Database_Info',
-@value = @DatabaseInfo;
-go

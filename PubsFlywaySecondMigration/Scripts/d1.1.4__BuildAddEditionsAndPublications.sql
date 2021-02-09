@@ -2,17 +2,17 @@
 
 /* We start by mopping up. We test to see if objects exist and if
  necessary delete them*/
-IF Object_Id('tempdb..#titles') IS NOT NULL DROP TABLE #titles
+IF Object_Id('tempdb..#titles') IS NOT NULL DROP TABLE #titles;
 
 --delete the views and procedures
 IF Object_Id('dbo.titleView') IS NOT NULL DROP VIEW dbo.titleview;
-IF Object_Id('dbo.titles','v') IS NOT NULL DROP view dbo.titles;
+IF Object_Id('dbo.titles', 'v') IS NOT NULL DROP VIEW dbo.titles;
 IF Object_Id('dbo.ByRoyalty') IS NOT NULL DROP PROCEDURE dbo.byroyalty;
 IF Object_Id('classic.titles') IS NOT NULL DROP VIEW classic.titles;
 IF Object_Id('dbo.reptq1') IS NOT NULL DROP PROCEDURE dbo.reptq1;
 IF Object_Id('dbo.reptq2') IS NOT NULL DROP PROCEDURE dbo.reptq2;
 IF Object_Id('dbo.reptq3') IS NOT NULL DROP PROCEDURE dbo.reptq3;
-IF Object_Id('dbo.TitlesFromTags') IS NOT NULL DROP function dbo.TitlesFromTags;
+IF Object_Id('dbo.TitlesFromTags') IS NOT NULL DROP FUNCTION dbo.TitlesFromTags;
 
 --delete the tables in order
 IF Object_Id('dbo.employee') IS NOT NULL DROP TABLE dbo.employee;
@@ -24,7 +24,7 @@ IF Object_Id('dbo.discounts') IS NOT NULL DROP TABLE dbo.discounts;
 IF Object_Id('dbo.TagTitle') IS NOT NULL DROP TABLE dbo.TagTitle;
 IF Object_Id('dbo.Prices') IS NOT NULL DROP TABLE dbo.Prices;
 IF Object_Id('dbo.editions') IS NOT NULL DROP TABLE dbo.Editions;
-IF Object_Id('dbo.titles','u') IS NOT NULL DROP TABLE dbo.titles;
+IF Object_Id('dbo.titles', 'u') IS NOT NULL DROP TABLE dbo.titles;
 IF Object_Id('dbo.EditionType') IS NOT NULL DROP TABLE dbo.EditionType;
 IF Object_Id('dbo.TagName') IS NOT NULL DROP TABLE dbo.TagName;
 IF Object_Id('dbo.authors') IS NOT NULL DROP TABLE dbo.authors;
@@ -42,101 +42,110 @@ DROP TYPE IF EXISTS dbo.dollars;
 
 --and schema collections
 IF EXISTS (SELECT * FROM sys.xml_schema_collections WHERE name = 'ObjectListParameter')
-Drop XML SCHEMA COLLECTION ObjectListParameter
+  DROP XML SCHEMA COLLECTION ObjectListParameter;
 
 --finally, we drop schemas
 IF EXISTS (SELECT schemas.name FROM sys.schemas WHERE schemas.name = 'classic')
   DROP SCHEMA classic;
-  Select * from sys.tables
+SELECT * FROM sys.tables;
 
 /*--The (re)Build Phase --*/
 
 -- and re-create types
-CREATE TYPE dbo.Dollars FROM  NUMERIC(9, 2) NOT NULL;
+CREATE TYPE dbo.Dollars FROM NUMERIC(9, 2) NOT NULL;
 CREATE TYPE dbo.id FROM NVARCHAR(11) NOT NULL;
 CREATE TYPE dbo.tid FROM NVARCHAR(8) NOT NULL;
 CREATE TYPE dbo.empid FROM CHAR(9) NOT NULL;
 
 -- and schema collecion.
-CREATE XML SCHEMA COLLECTION dbo.ObjectListParameter 
-AS N'<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+CREATE XML SCHEMA COLLECTION dbo.ObjectListParameter AS
+N'<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <xsd:element name="Object">
     <xsd:simpleType>
       <xsd:list itemType="xsd:string" />
     </xsd:simpleType>
   </xsd:element>
-</xsd:schema>'
+</xsd:schema>';
 GO
 
 
 
 
 /****** Object:  Table [dbo].[titles]    Script Date: 18/01/2021 15:01:56 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[titles](
-	[title_id] [dbo].[tid] NOT NULL,
-	[title] [nvarchar](255) NOT NULL,
-	[type] [nvarchar](80) NOT NULL,
-	[pub_id] [char](8) NULL,
-	[price] [money] NULL,
-	[advance] [money] NULL,
-	[royalty] [int] NULL,
-	[ytd_sales] [int] NULL,
-	[notes] [nvarchar](4000) NULL,
-	[pubdate] [datetime] NOT NULL,
- CONSTRAINT [UPKCL_titleidind] PRIMARY KEY CLUSTERED 
-(
-	[title_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.titles
+  (
+  title_id dbo.tid NOT NULL,
+  title NVARCHAR(255) NOT NULL,
+  type NVARCHAR(80) NOT NULL,
+  pub_id CHAR(8) NULL,
+  price MONEY NULL,
+  advance MONEY NULL,
+  royalty INT NULL,
+  ytd_sales INT NULL,
+  notes NVARCHAR(4000) NULL,
+  pubdate DATETIME NOT NULL,
+  CONSTRAINT UPKCL_titleidind PRIMARY KEY CLUSTERED (title_id ASC) 
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY] ) ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[authors]    Script Date: 18/01/2021 15:01:57 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[authors](
-	[au_id] [dbo].[id] NOT NULL,
-	[au_lname] [nvarchar](80) NOT NULL,
-	[au_fname] [nvarchar](80) NOT NULL,
-	[phone] [nvarchar](40) NOT NULL,
-	[address] [nvarchar](80) NULL,
-	[city] [nvarchar](40) NULL,
-	[state] [char](2) NULL,
-	[zip] [char](5) NULL,
-	[contract] [bit] NOT NULL,
- CONSTRAINT [UPKCL_auidind] PRIMARY KEY CLUSTERED 
-(
-	[au_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.authors
+  (
+  au_id dbo.id NOT NULL,
+  au_lname NVARCHAR(80) NOT NULL,
+  au_fname NVARCHAR(80) NOT NULL,
+  phone NVARCHAR(40) NOT NULL,
+  address NVARCHAR(80) NULL,
+  city NVARCHAR(40) NULL,
+  state CHAR(2) NULL,
+  zip CHAR(5) NULL,
+  contract BIT NOT NULL,
+  CONSTRAINT UPKCL_auidind PRIMARY KEY CLUSTERED (au_id ASC)
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]             
+  ) ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[titleauthor]    Script Date: 18/01/2021 15:01:57 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[titleauthor](
-	[au_id] [dbo].[id] NOT NULL,
-	[title_id] [dbo].[tid] NOT NULL,
-	[au_ord] [tinyint] NULL,
-	[royaltyper] [int] NULL,
- CONSTRAINT [UPKCL_taind] PRIMARY KEY CLUSTERED 
-(
-	[au_id] ASC,
-	[title_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.titleauthor
+  (
+  au_id dbo.id NOT NULL,
+  title_id dbo.tid NOT NULL,
+  au_ord TINYINT NULL,
+  royaltyper INT NULL,
+  CONSTRAINT UPKCL_taind PRIMARY KEY CLUSTERED (au_id ASC, title_id ASC)
+ 	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]
 GO
 /****** Object:  View [dbo].[titleview]    Script Date: 18/01/2021 15:01:57 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE VIEW [dbo].[titleview]
+CREATE VIEW dbo.titleview
 AS
 SELECT title, au_ord, au_lname, price, ytd_sales, pub_id
   FROM authors, titles, titleauthor
@@ -145,354 +154,460 @@ SELECT title, au_ord, au_lname, price, ytd_sales, pub_id
 
 GO
 /****** Object:  Table [dbo].[discounts]    Script Date: 18/01/2021 15:01:57 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[discounts](
-	[discounttype] [nvarchar](80) NOT NULL,
-	[stor_id] [char](4) NULL,
-	[lowqty] [smallint] NULL,
-	[highqty] [smallint] NULL,
-	[discount] [decimal](4, 2) NOT NULL,
-	[Discount_id] [int] IDENTITY(1,1) NOT NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[Discount_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.discounts
+  (
+  discounttype NVARCHAR(80) NOT NULL,
+  stor_id CHAR(4) NULL,
+  lowqty SMALLINT NULL,
+  highqty SMALLINT NULL,
+  discount DECIMAL(4, 2) NOT NULL,
+  Discount_id INT IDENTITY(1, 1) NOT NULL,
+  PRIMARY KEY CLUSTERED (Discount_id ASC)
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]
+  ) ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[employee]    Script Date: 18/01/2021 15:01:57 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[employee](
-	[emp_id] [dbo].[empid] NOT NULL,
-	[fname] [nvarchar](40) NOT NULL,
-	[minit] [char](1) NULL,
-	[lname] [nvarchar](60) NOT NULL,
-	[job_id] [smallint] NOT NULL,
-	[job_lvl] [tinyint] NULL,
-	[pub_id] [char](8) NOT NULL,
-	[hire_date] [datetime] NOT NULL,
- CONSTRAINT [PK_emp_id] PRIMARY KEY NONCLUSTERED 
-(
-	[emp_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.employee
+  (
+  emp_id dbo.empid NOT NULL,
+  fname NVARCHAR(40) NOT NULL,
+  minit CHAR(1) NULL,
+  lname NVARCHAR(60) NOT NULL,
+  job_id SMALLINT NOT NULL,
+  job_lvl TINYINT NULL,
+  pub_id CHAR(8) NOT NULL,
+  hire_date DATETIME NOT NULL,
+  CONSTRAINT PK_emp_id PRIMARY KEY NONCLUSTERED (emp_id ASC)
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]
+  ) ON [PRIMARY];
 GO
-SET ANSI_PADDING ON
+SET ANSI_PADDING ON;
 GO
 /****** Object:  Index [employee_ind]    Script Date: 18/01/2021 15:01:57 ******/
-CREATE CLUSTERED INDEX [employee_ind] ON [dbo].[employee]
-(
-	[lname] ASC,
-	[fname] ASC,
-	[minit] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+CREATE CLUSTERED INDEX employee_ind
+ON dbo.employee (lname ASC, fname ASC, minit ASC)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF,
+     DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON,
+     ALLOW_PAGE_LOCKS = ON
+     )
+ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[flyway_schema_history]    Script Date: 18/01/2021 15:01:57 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
 /****** Object:  Table [dbo].[jobs]    Script Date: 18/01/2021 15:01:57 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[jobs](
-	[job_id] [smallint] IDENTITY(1,1) NOT NULL,
-	[job_desc] [varchar](50) NOT NULL,
-	[min_lvl] [tinyint] NOT NULL,
-	[max_lvl] [tinyint] NOT NULL,
- CONSTRAINT [PK__jobs__6E32B6A51A14E395] PRIMARY KEY CLUSTERED 
-(
-	[job_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.jobs
+  (
+  job_id SMALLINT IDENTITY(1, 1) NOT NULL,
+  job_desc VARCHAR(50) NOT NULL,
+  min_lvl TINYINT NOT NULL,
+  max_lvl TINYINT NOT NULL,
+  CONSTRAINT PK__jobs__6E32B6A51A14E395 PRIMARY KEY CLUSTERED (job_id ASC) 
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]
+  ) ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[pub_info]    Script Date: 18/01/2021 15:01:58 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[pub_info](
-	[pub_id] [char](8) NOT NULL,
-	[logo] [varbinary](max) NULL,
-	[pr_info] [nvarchar](max) NULL,
- CONSTRAINT [UPKCL_pubinfo] PRIMARY KEY CLUSTERED 
-(
-	[pub_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+CREATE TABLE dbo.pub_info
+  (
+  pub_id CHAR(8) NOT NULL,
+  logo VARBINARY(MAX) NULL,
+  pr_info NVARCHAR(MAX) NULL,
+  CONSTRAINT UPKCL_pubinfo PRIMARY KEY CLUSTERED (pub_id ASC)
+   	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]
+  ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[publishers]    Script Date: 18/01/2021 15:01:58 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[publishers](
-	[pub_id] [char](8) NOT NULL,
-	[pub_name] [nvarchar](100) NULL,
-	[city] [nvarchar](100) NULL,
-	[state] [char](2) NULL,
-	[country] [nvarchar](80) NULL,
- CONSTRAINT [UPKCL_pubind] PRIMARY KEY CLUSTERED 
-(
-	[pub_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.publishers
+  (
+  pub_id CHAR(8) NOT NULL,
+  pub_name NVARCHAR(100) NULL,
+  city NVARCHAR(100) NULL,
+  state CHAR(2) NULL,
+  country NVARCHAR(80) NULL,
+  CONSTRAINT UPKCL_pubind PRIMARY KEY CLUSTERED (pub_id ASC)
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]
+  ) ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[roysched]    Script Date: 18/01/2021 15:01:58 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[roysched](
-	[title_id] [dbo].[tid] NOT NULL,
-	[lorange] [int] NULL,
-	[hirange] [int] NULL,
-	[royalty] [int] NULL,
-	[roysched_id] [int] IDENTITY(1,1) NOT NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[roysched_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.roysched
+  (
+  title_id dbo.tid NOT NULL,
+  lorange INT NULL,
+  hirange INT NULL,
+  royalty INT NULL,
+  roysched_id INT IDENTITY(1, 1) NOT NULL,
+  PRIMARY KEY CLUSTERED (roysched_id ASC) 
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]
+  ) ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[sales]    Script Date: 18/01/2021 15:01:58 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[sales](
-	[stor_id] [char](4) NOT NULL,
-	[ord_num] [nvarchar](40) NOT NULL,
-	[ord_date] [datetime] NOT NULL,
-	[qty] [smallint] NOT NULL,
-	[payterms] [nvarchar](40) NOT NULL,
-	[title_id] [dbo].[tid] NOT NULL,
- CONSTRAINT [UPKCL_sales] PRIMARY KEY CLUSTERED 
-(
-	[stor_id] ASC,
-	[ord_num] ASC,
-	[title_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.sales
+  (
+  stor_id CHAR(4) NOT NULL,
+  ord_num NVARCHAR(40) NOT NULL,
+  ord_date DATETIME NOT NULL,
+  qty SMALLINT NOT NULL,
+  payterms NVARCHAR(40) NOT NULL,
+  title_id dbo.tid NOT NULL,
+  CONSTRAINT UPKCL_sales PRIMARY KEY CLUSTERED
+    (stor_id ASC, ord_num ASC, title_id ASC)
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]  ) ON [PRIMARY];
 GO
 /****** Object:  Table [dbo].[stores]    Script Date: 18/01/2021 15:01:58 ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[stores](
-	[stor_id] [char](4) NOT NULL,
-	[stor_name] [nvarchar](80) NULL,
-	[stor_address] [nvarchar](80) NULL,
-	[city] [nvarchar](40) NULL,
-	[state] [char](2) NULL,
-	[zip] [char](5) NULL,
- CONSTRAINT [UPK_storeid] PRIMARY KEY CLUSTERED 
-(
-	[stor_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+CREATE TABLE dbo.stores
+  (
+  stor_id CHAR(4) NOT NULL,
+  stor_name NVARCHAR(80) NULL,
+  stor_address NVARCHAR(80) NULL,
+  city NVARCHAR(40) NULL,
+  state CHAR(2) NULL,
+  zip CHAR(5) NULL,
+  CONSTRAINT UPK_storeid PRIMARY KEY CLUSTERED (stor_id ASC)
+	WITH (PAD_INDEX = OFF,
+        STATISTICS_NORECOMPUTE = OFF,
+        IGNORE_DUP_KEY = OFF,
+        ALLOW_ROW_LOCKS = ON,
+        ALLOW_PAGE_LOCKS = ON
+        ) ON [PRIMARY]  ) ON [PRIMARY];
 GO
-SET ANSI_PADDING ON
+SET ANSI_PADDING ON;
 GO
 /****** Object:  Index [aunmind]    Script Date: 18/01/2021 15:01:58 ******/
-CREATE NONCLUSTERED INDEX [aunmind] ON [dbo].[authors]
-(
-	[au_lname] ASC,
-	[au_fname] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+CREATE NONCLUSTERED INDEX aunmind
+ON dbo.authors (au_lname ASC, au_fname ASC)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF,
+     DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON,
+     ALLOW_PAGE_LOCKS = ON
+     )
+ON [PRIMARY];
 GO
-SET ANSI_PADDING ON
-GO
-/****** Object:  Index [titleidind]    Script Date: 18/01/2021 15:01:58 ******/
-CREATE NONCLUSTERED INDEX [titleidind] ON [dbo].[roysched]
-(
-	[title_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-GO
-SET ANSI_PADDING ON
+SET ANSI_PADDING ON;
 GO
 /****** Object:  Index [titleidind]    Script Date: 18/01/2021 15:01:58 ******/
-CREATE NONCLUSTERED INDEX [titleidind] ON [dbo].[sales]
-(
-	[title_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+CREATE NONCLUSTERED INDEX titleidind
+ON dbo.roysched (title_id ASC)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF,
+     DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON,
+     ALLOW_PAGE_LOCKS = ON
+     )
+ON [PRIMARY];
 GO
-SET ANSI_PADDING ON
+SET ANSI_PADDING ON;
+GO
+/****** Object:  Index [titleidind]    Script Date: 18/01/2021 15:01:58 ******/
+CREATE NONCLUSTERED INDEX titleidind
+ON dbo.sales (title_id ASC)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF,
+     DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON,
+     ALLOW_PAGE_LOCKS = ON
+     )
+ON [PRIMARY];
+GO
+SET ANSI_PADDING ON;
 GO
 /****** Object:  Index [auidind]    Script Date: 18/01/2021 15:01:58 ******/
-CREATE NONCLUSTERED INDEX [auidind] ON [dbo].[titleauthor]
-(
-	[au_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+CREATE NONCLUSTERED INDEX auidind
+ON dbo.titleauthor (au_id ASC)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF,
+     DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON,
+     ALLOW_PAGE_LOCKS = ON
+     )
+ON [PRIMARY];
 GO
-SET ANSI_PADDING ON
+SET ANSI_PADDING ON;
 GO
 /****** Object:  Index [titleidind]    Script Date: 18/01/2021 15:01:58 ******/
-CREATE NONCLUSTERED INDEX [titleidind] ON [dbo].[titleauthor]
-(
-	[title_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+CREATE NONCLUSTERED INDEX titleidind
+ON dbo.titleauthor (title_id ASC)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF,
+     DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON,
+     ALLOW_PAGE_LOCKS = ON
+     )
+ON [PRIMARY];
 GO
-SET ANSI_PADDING ON
+SET ANSI_PADDING ON;
 GO
 /****** Object:  Index [titleind]    Script Date: 18/01/2021 15:01:58 ******/
-CREATE NONCLUSTERED INDEX [titleind] ON [dbo].[titles]
-(
-	[title] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+CREATE NONCLUSTERED INDEX titleind
+ON dbo.titles (title ASC)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF,
+     DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON,
+     ALLOW_PAGE_LOCKS = ON
+     )
+ON [PRIMARY];
 GO
-ALTER TABLE [dbo].[authors] ADD  CONSTRAINT [AssumeUnknown]  DEFAULT ('UNKNOWN') FOR [phone]
+ALTER TABLE dbo.authors
+ADD CONSTRAINT AssumeUnknown DEFAULT ('UNKNOWN') FOR phone;
 GO
-ALTER TABLE [dbo].[employee] ADD  CONSTRAINT [AssumeJobIDof1]  DEFAULT ((1)) FOR [job_id]
+ALTER TABLE dbo.employee
+ADD CONSTRAINT AssumeJobIDof1 DEFAULT ((1)) FOR job_id;
 GO
-ALTER TABLE [dbo].[employee] ADD  CONSTRAINT [AssumeJobLevelof10]  DEFAULT ((10)) FOR [job_lvl]
+ALTER TABLE dbo.employee
+ADD CONSTRAINT AssumeJobLevelof10 DEFAULT ((10)) FOR job_lvl;
 GO
-ALTER TABLE [dbo].[employee] ADD  CONSTRAINT [AssumeAPub_IDof9952]  DEFAULT ('9952') FOR [pub_id]
+ALTER TABLE dbo.employee
+ADD CONSTRAINT AssumeAPub_IDof9952 DEFAULT ('9952') FOR pub_id;
 GO
-ALTER TABLE [dbo].[employee] ADD  CONSTRAINT [AssumeAewHire]  DEFAULT (getdate()) FOR [hire_date]
+ALTER TABLE dbo.employee
+ADD CONSTRAINT AssumeAewHire DEFAULT (GetDate()) FOR hire_date;
 GO
-ALTER TABLE [dbo].[jobs] ADD  CONSTRAINT [AssumeANewPosition]  DEFAULT ('New Position - title not formalized yet') FOR [job_desc]
+ALTER TABLE dbo.jobs
+ADD CONSTRAINT AssumeANewPosition DEFAULT ('New Position - title not formalized yet') FOR job_desc;
 GO
-ALTER TABLE [dbo].[publishers] ADD  CONSTRAINT [AssumeItsTheSatates]  DEFAULT ('USA') FOR [country]
+ALTER TABLE dbo.publishers
+ADD CONSTRAINT AssumeItsTheSatates DEFAULT ('USA') FOR country;
 GO
-ALTER TABLE [dbo].[titles] ADD  CONSTRAINT [AssumeUndecided]  DEFAULT ('UNDECIDED') FOR [type]
+ALTER TABLE dbo.titles
+ADD CONSTRAINT AssumeUndecided DEFAULT ('UNDECIDED') FOR type;
 GO
-ALTER TABLE [dbo].[titles] ADD  CONSTRAINT [AssumeItsPublishedToday]  DEFAULT (getdate()) FOR [pubdate]
+ALTER TABLE dbo.titles
+ADD CONSTRAINT AssumeItsPublishedToday DEFAULT (GetDate()) FOR pubdate;
 GO
-ALTER TABLE [dbo].[discounts]  WITH CHECK ADD  CONSTRAINT [FK__discounts__store] FOREIGN KEY([stor_id])
-REFERENCES [dbo].[stores] ([stor_id])
+ALTER TABLE dbo.discounts WITH CHECK
+ADD CONSTRAINT FK__discounts__store FOREIGN KEY (stor_id) REFERENCES dbo.stores
+                                      (stor_id);
 GO
-ALTER TABLE [dbo].[discounts] CHECK CONSTRAINT [FK__discounts__store]
+ALTER TABLE dbo.discounts CHECK CONSTRAINT FK__discounts__store;
 GO
-ALTER TABLE [dbo].[employee]  WITH CHECK ADD  CONSTRAINT [FK__employee__job_id] FOREIGN KEY([job_id])
-REFERENCES [dbo].[jobs] ([job_id])
+ALTER TABLE dbo.employee WITH CHECK
+ADD CONSTRAINT FK__employee__job_id FOREIGN KEY (job_id) REFERENCES dbo.jobs
+                                      (job_id);
 GO
-ALTER TABLE [dbo].[employee] CHECK CONSTRAINT [FK__employee__job_id]
+ALTER TABLE dbo.employee CHECK CONSTRAINT FK__employee__job_id;
 GO
-ALTER TABLE [dbo].[employee]  WITH CHECK ADD  CONSTRAINT [FK__employee__pub_id] FOREIGN KEY([pub_id])
-REFERENCES [dbo].[publishers] ([pub_id])
+ALTER TABLE dbo.employee WITH CHECK
+ADD CONSTRAINT FK__employee__pub_id FOREIGN KEY (pub_id) REFERENCES dbo.publishers
+                                      (pub_id);
 GO
-ALTER TABLE [dbo].[employee] CHECK CONSTRAINT [FK__employee__pub_id]
+ALTER TABLE dbo.employee CHECK CONSTRAINT FK__employee__pub_id;
 GO
-ALTER TABLE [dbo].[pub_info]  WITH CHECK ADD  CONSTRAINT [FK__pub_info__pub_id] FOREIGN KEY([pub_id])
-REFERENCES [dbo].[publishers] ([pub_id])
+ALTER TABLE dbo.pub_info WITH CHECK
+ADD CONSTRAINT FK__pub_info__pub_id FOREIGN KEY (pub_id) REFERENCES dbo.publishers
+                                      (pub_id);
 GO
-ALTER TABLE [dbo].[pub_info] CHECK CONSTRAINT [FK__pub_info__pub_id]
+ALTER TABLE dbo.pub_info CHECK CONSTRAINT FK__pub_info__pub_id;
 GO
-ALTER TABLE [dbo].[roysched]  WITH CHECK ADD  CONSTRAINT [FK__roysched__title] FOREIGN KEY([title_id])
-REFERENCES [dbo].[titles] ([title_id])
+ALTER TABLE dbo.roysched WITH CHECK
+ADD CONSTRAINT FK__roysched__title FOREIGN KEY (title_id) REFERENCES dbo.titles
+                                     (title_id);
 GO
-ALTER TABLE [dbo].[roysched] CHECK CONSTRAINT [FK__roysched__title]
+ALTER TABLE dbo.roysched CHECK CONSTRAINT FK__roysched__title;
 GO
-ALTER TABLE [dbo].[sales]  WITH CHECK ADD constraint [FK_Sales_Stores] FOREIGN KEY([stor_id])
-REFERENCES [dbo].[stores] ([stor_id])
+ALTER TABLE dbo.sales WITH CHECK
+ADD CONSTRAINT FK_Sales_Stores FOREIGN KEY (stor_id) REFERENCES dbo.stores
+                                 (stor_id);
 GO
-ALTER TABLE [dbo].[sales]  WITH CHECK ADD constraint [FK_Sales_Title] FOREIGN KEY([title_id])
-REFERENCES [dbo].[titles] ([title_id])
+ALTER TABLE dbo.sales WITH CHECK
+ADD CONSTRAINT FK_Sales_Title FOREIGN KEY (title_id) REFERENCES dbo.titles
+                                (title_id);
 GO
-ALTER TABLE [dbo].[titleauthor]  WITH CHECK ADD  CONSTRAINT [FK__titleauth__au_id] FOREIGN KEY([au_id])
-REFERENCES [dbo].[authors] ([au_id])
+ALTER TABLE dbo.titleauthor WITH CHECK
+ADD CONSTRAINT FK__titleauth__au_id FOREIGN KEY (au_id) REFERENCES dbo.authors
+                                      (au_id);
 GO
-ALTER TABLE [dbo].[titleauthor] CHECK CONSTRAINT [FK__titleauth__au_id]
+ALTER TABLE dbo.titleauthor CHECK CONSTRAINT FK__titleauth__au_id;
 GO
-ALTER TABLE [dbo].[titleauthor]  WITH CHECK ADD  CONSTRAINT [FK__titleauth__title] FOREIGN KEY([title_id])
-REFERENCES [dbo].[titles] ([title_id])
+ALTER TABLE dbo.titleauthor WITH CHECK
+ADD CONSTRAINT FK__titleauth__title FOREIGN KEY (title_id) REFERENCES dbo.titles
+                                      (title_id);
 GO
-ALTER TABLE [dbo].[titleauthor] CHECK CONSTRAINT [FK__titleauth__title]
+ALTER TABLE dbo.titleauthor CHECK CONSTRAINT FK__titleauth__title;
 GO
-ALTER TABLE [dbo].[titles]  WITH CHECK ADD  CONSTRAINT [FK__titles__pub_id] FOREIGN KEY([pub_id])
-REFERENCES [dbo].[publishers] ([pub_id])
+ALTER TABLE dbo.titles WITH CHECK
+ADD CONSTRAINT FK__titles__pub_id FOREIGN KEY (pub_id) REFERENCES dbo.publishers
+                                    (pub_id);
 GO
-ALTER TABLE [dbo].[titles] CHECK CONSTRAINT [FK__titles__pub_id]
+ALTER TABLE dbo.titles CHECK CONSTRAINT FK__titles__pub_id;
 GO
-ALTER TABLE [dbo].[authors]  WITH CHECK ADD  CONSTRAINT [CK__authors__au_id] CHECK  (([au_id] like '[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]'))
+ALTER TABLE dbo.authors WITH CHECK
+ADD CONSTRAINT CK__authors__au_id CHECK ((au_id LIKE '[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]'));
 GO
-ALTER TABLE [dbo].[authors] CHECK CONSTRAINT [CK__authors__au_id]
+ALTER TABLE dbo.authors CHECK CONSTRAINT CK__authors__au_id;
 GO
-ALTER TABLE [dbo].[authors]  WITH CHECK ADD  CONSTRAINT [CK__authors__zip] CHECK  (([zip] like '[0-9][0-9][0-9][0-9][0-9]'))
+ALTER TABLE dbo.authors WITH CHECK
+ADD CONSTRAINT CK__authors__zip CHECK ((zip LIKE '[0-9][0-9][0-9][0-9][0-9]'));
 GO
-ALTER TABLE [dbo].[authors] CHECK CONSTRAINT [CK__authors__zip]
+ALTER TABLE dbo.authors CHECK CONSTRAINT CK__authors__zip;
 GO
-ALTER TABLE [dbo].[employee]  WITH CHECK ADD  CONSTRAINT [CK_emp_id] CHECK  (([emp_id] like '[A-Z][A-Z][A-Z][1-9][0-9][0-9][0-9][0-9][FM]' OR [emp_id] like '[A-Z]-[A-Z][1-9][0-9][0-9][0-9][0-9][FM]'))
+ALTER TABLE dbo.employee WITH CHECK
+ADD CONSTRAINT CK_emp_id CHECK ((
+                               emp_id LIKE '[A-Z][A-Z][A-Z][1-9][0-9][0-9][0-9][0-9][FM]'
+                            OR emp_id LIKE '[A-Z]-[A-Z][1-9][0-9][0-9][0-9][0-9][FM]'
+                               ));
 GO
-ALTER TABLE [dbo].[employee] CHECK CONSTRAINT [CK_emp_id]
+ALTER TABLE dbo.employee CHECK CONSTRAINT CK_emp_id;
 GO
-ALTER TABLE [dbo].[jobs]  WITH CHECK ADD  CONSTRAINT [CK__jobs__max_lvl] CHECK  (([max_lvl]<=(250)))
+ALTER TABLE dbo.jobs WITH CHECK
+ADD CONSTRAINT CK__jobs__max_lvl CHECK ((max_lvl <= (250)));
 GO
-ALTER TABLE [dbo].[jobs] CHECK CONSTRAINT [CK__jobs__max_lvl]
+ALTER TABLE dbo.jobs CHECK CONSTRAINT CK__jobs__max_lvl;
 GO
-ALTER TABLE [dbo].[jobs]  WITH CHECK ADD  CONSTRAINT [CK__jobs__min_lvl] CHECK  (([min_lvl]>=(10)))
+ALTER TABLE dbo.jobs WITH CHECK
+ADD CONSTRAINT CK__jobs__min_lvl CHECK ((min_lvl >= (10)));
 GO
-ALTER TABLE [dbo].[jobs] CHECK CONSTRAINT [CK__jobs__min_lvl]
+ALTER TABLE dbo.jobs CHECK CONSTRAINT CK__jobs__min_lvl;
 GO
-ALTER TABLE [dbo].[publishers]  WITH CHECK ADD  CONSTRAINT [CK__publisher__pub_id] CHECK  (([pub_id]='1756' OR [pub_id]='1622' OR [pub_id]='0877' OR [pub_id]='0736' OR [pub_id]='1389' OR [pub_id] like '99[0-9][0-9]'))
+ALTER TABLE dbo.publishers WITH CHECK
+ADD CONSTRAINT CK__publisher__pub_id CHECK ((
+                                           pub_id = '1756'
+                                        OR pub_id = '1622'
+                                        OR pub_id = '0877'
+                                        OR pub_id = '0736'
+                                        OR pub_id = '1389'
+                                        OR pub_id LIKE '99[0-9][0-9]'
+                                           ));
 GO
-ALTER TABLE [dbo].[publishers] CHECK CONSTRAINT [CK__publisher__pub_id]
+ALTER TABLE dbo.publishers CHECK CONSTRAINT CK__publisher__pub_id;
 GO
 
-CREATE TABLE [dbo].[publications]
-(
---Title_id AS publication_id, pub_id, title ,notes
-[Publication_id] [dbo].[tid] NOT NULL constraint PK_Publication primary key,
-[title] [nvarchar](255) NOT NULL,
-[pub_id] [char](8) NULL constraint fkPublishers references dbo.publishers,
-[notes] [nvarchar] (4000) COLLATE Latin1_General_CI_AS NULL,
-[pubdate] [datetime] NOT NULL CONSTRAINT [pub_NowDefault] DEFAULT (getdate())
-) ON [PRIMARY]
+CREATE TABLE dbo.publications
+  (
+  --Title_id AS publication_id, pub_id, title ,notes
+  Publication_id dbo.tid NOT NULL CONSTRAINT PK_Publication PRIMARY KEY,
+  title NVARCHAR(255) NOT NULL,
+  pub_id CHAR(8) NULL CONSTRAINT fkPublishers REFERENCES dbo.publishers,
+  notes NVARCHAR(4000) COLLATE Latin1_General_CI_AS NULL,
+  pubdate DATETIME NOT NULL CONSTRAINT pub_NowDefault DEFAULT (GetDate())
+  ) ON [PRIMARY];
 GO
 
-create table dbo.editions
-(
-Edition_id int identity(1,1) constraint PK_editions primary key,
-publication_id dbo.tid constraint fk_edition  references  publications, 
-Publication_type nvarchar(20) not null default 'book', 
-EditionDate datetime2 not null default  getdate()
-)
-go
+CREATE TABLE dbo.editions
+  (
+  Edition_id INT IDENTITY(1, 1) CONSTRAINT PK_editions PRIMARY KEY,
+  publication_id dbo.tid CONSTRAINT fk_edition REFERENCES publications,
+  Publication_type NVARCHAR(20) NOT NULL DEFAULT 'book',
+  EditionDate DATETIME2 NOT NULL DEFAULT GetDate()
+  );
+GO
 --ALTER  VIEW price AS SELECT title_id AS edition_id, NULL AS price_id,   price, advance, royalty, ytd_sales, getdate() AS From_Date,null as To_date FROM dbo.titles
-create table dbo.prices
-( 
-Price_id int identity(1,1) constraint PK_Prices primary key,
-Edition_id int constraint fk_prices references editions,
-[price] [dbo].[Dollars] NULL,
-[advance] [dbo].[Dollars] NULL,
-[royalty] [int] NULL,
-[ytd_sales] [int] NULL,
-PriceStartDate datetime2 not null default getdate(),
-PriceEndDate datetime2 null)
+CREATE TABLE dbo.prices
+  (
+  Price_id INT IDENTITY(1, 1) CONSTRAINT PK_Prices PRIMARY KEY,
+  Edition_id INT CONSTRAINT fk_prices REFERENCES editions,
+  price dbo.Dollars NULL,
+  advance dbo.Dollars NULL,
+  royalty INT NULL,
+  ytd_sales INT NULL,
+  PriceStartDate DATETIME2 NOT NULL DEFAULT GetDate(),
+  PriceEndDate DATETIME2 NULL
+  );
 
 
 INSERT authors
 VALUES
-( N'172-32-1176', N'White', N'Johnson', '408 496-7223', N'10932 Bigge Rd.', N'Menlo Park', 'CA', '94025', 1 ), 
-( N'213-46-8915', N'Green', N'Marjorie', '415 986-7020', N'309 63rd St. #411', N'Oakland', 'CA', '94618', 1 ), 
-( N'238-95-7766', N'Carson', N'Cheryl', '415 548-7723', N'589 Darwin Ln.', N'Berkeley', 'CA', '94705', 1 ), 
-( N'267-41-2394', N'O''Leary', N'Michael', '408 286-2428', N'22 Cleveland Av. #14', N'San Jose', 'CA', '95128', 1 ), 
-( N'274-80-9391', N'Straight', N'Dean', '415 834-2919', N'5420 College Av.', N'Oakland', 'CA', '94609', 1 ), 
-( N'341-22-1782', N'Smith', N'Meander', '913 843-0462', N'10 Mississippi Dr.', N'Lawrence', 'KS', '66044', 0 ), 
-( N'409-56-7008', N'Bennet', N'Abraham', '415 658-9932', N'6223 Bateman St.', N'Berkeley', 'CA', '94705', 1 ), 
-( N'427-17-2319', N'Dull', N'Ann', '415 836-7128', N'3410 Blonde St.', N'Palo Alto', 'CA', '94301', 1 ), 
-( N'472-27-2349', N'Gringlesby', N'Burt', '707 938-6445', N'PO Box 792', N'Covelo', 'CA', '95428', 1 ), 
-( N'486-29-1786', N'Locksley', N'Charlene', '415 585-4620', N'18 Broadway Av.', N'San Francisco', 'CA', '94130', 1 ), 
-( N'527-72-3246', N'Greene', N'Morningstar', '615 297-2723', N'22 Graybar House Rd.', N'Nashville', 'TN', '37215', 0 ), 
-( N'648-92-1872', N'Blotchet-Halls', N'Reginald', '503 745-6402', N'55 Hillsdale Bl.', N'Corvallis', 'OR', '97330', 1 ), 
-( N'672-71-3249', N'Yokomoto', N'Akiko', '415 935-4228', N'3 Silver Ct.', N'Walnut Creek', 'CA', '94595', 1 ), 
-( N'712-45-1867', N'del Castillo', N'Innes', '615 996-8275', N'2286 Cram Pl. #86', N'Ann Arbor', 'MI', '48105', 1 ), 
-( N'722-51-5454', N'DeFrance', N'Michel', '219 547-9982', N'3 Balding Pl.', N'Gary', 'IN', '46403', 1 ), 
-( N'724-08-9931', N'Stringer', N'Dirk', '415 843-2991', N'5420 Telegraph Av.', N'Oakland', 'CA', '94609', 0 ), 
-( N'724-80-9391', N'MacFeather', N'Stearns', '415 354-7128', N'44 Upland Hts.', N'Oakland', 'CA', '94612', 1 ), 
-( N'756-30-7391', N'Karsen', N'Livia', '415 534-9219', N'5720 McAuley St.', N'Oakland', 'CA', '94609', 1 ), 
-( N'807-91-6654', N'Panteley', N'Sylvia', '301 946-8853', N'1956 Arlington Pl.', N'Rockville', 'MD', '20853', 1 ), 
-( N'846-92-7186', N'Hunter', N'Sheryl', '415 836-7128', N'3410 Blonde St.', N'Palo Alto', 'CA', '94301', 1 ), 
-( N'893-72-1158', N'McBadden', N'Heather', '707 448-4982', N'301 Putnam', N'Vacaville', 'CA', '95688', 0 ), 
-( N'899-46-2035', N'Ringer', N'Anne', '801 826-0752', N'67 Seventh Av.', N'Salt Lake City', 'UT', '84152', 1 ), 
-( N'998-72-3567', N'Ringer', N'Albert', '801 826-0752', N'67 Seventh Av.', N'Salt Lake City', 'UT', '84152', 1 )
+  (N'172-32-1176', N'White', N'Johnson', '408 496-7223', N'10932 Bigge Rd.',
+N'Menlo Park', 'CA', '94025', 1),
+  (N'213-46-8915', N'Green', N'Marjorie', '415 986-7020',
+N'309 63rd St. #411', N'Oakland', 'CA', '94618', 1),
+  (N'238-95-7766', N'Carson', N'Cheryl', '415 548-7723', N'589 Darwin Ln.',
+N'Berkeley', 'CA', '94705', 1),
+  (N'267-41-2394', N'O''Leary', N'Michael', '408 286-2428',
+N'22 Cleveland Av. #14', N'San Jose', 'CA', '95128', 1),
+  (N'274-80-9391', N'Straight', N'Dean', '415 834-2919', N'5420 College Av.',
+N'Oakland', 'CA', '94609', 1),
+  (N'341-22-1782', N'Smith', N'Meander', '913 843-0462',
+N'10 Mississippi Dr.', N'Lawrence', 'KS', '66044', 0),
+  (N'409-56-7008', N'Bennet', N'Abraham', '415 658-9932',
+N'6223 Bateman St.', N'Berkeley', 'CA', '94705', 1),
+  (N'427-17-2319', N'Dull', N'Ann', '415 836-7128', N'3410 Blonde St.',
+N'Palo Alto', 'CA', '94301', 1),
+  (N'472-27-2349', N'Gringlesby', N'Burt', '707 938-6445', N'PO Box 792',
+N'Covelo', 'CA', '95428', 1),
+  (N'486-29-1786', N'Locksley', N'Charlene', '415 585-4620',
+N'18 Broadway Av.', N'San Francisco', 'CA', '94130', 1),
+  (N'527-72-3246', N'Greene', N'Morningstar', '615 297-2723',
+N'22 Graybar House Rd.', N'Nashville', 'TN', '37215', 0),
+  (N'648-92-1872', N'Blotchet-Halls', N'Reginald', '503 745-6402',
+N'55 Hillsdale Bl.', N'Corvallis', 'OR', '97330', 1),
+  (N'672-71-3249', N'Yokomoto', N'Akiko', '415 935-4228', N'3 Silver Ct.',
+N'Walnut Creek', 'CA', '94595', 1),
+  (N'712-45-1867', N'del Castillo', N'Innes', '615 996-8275',
+N'2286 Cram Pl. #86', N'Ann Arbor', 'MI', '48105', 1),
+  (N'722-51-5454', N'DeFrance', N'Michel', '219 547-9982', N'3 Balding Pl.',
+N'Gary', 'IN', '46403', 1),
+  (N'724-08-9931', N'Stringer', N'Dirk', '415 843-2991',
+N'5420 Telegraph Av.', N'Oakland', 'CA', '94609', 0),
+  (N'724-80-9391', N'MacFeather', N'Stearns', '415 354-7128',
+N'44 Upland Hts.', N'Oakland', 'CA', '94612', 1),
+  (N'756-30-7391', N'Karsen', N'Livia', '415 534-9219', N'5720 McAuley St.',
+N'Oakland', 'CA', '94609', 1),
+  (N'807-91-6654', N'Panteley', N'Sylvia', '301 946-8853',
+N'1956 Arlington Pl.', N'Rockville', 'MD', '20853', 1),
+  (N'846-92-7186', N'Hunter', N'Sheryl', '415 836-7128', N'3410 Blonde St.',
+N'Palo Alto', 'CA', '94301', 1),
+  (N'893-72-1158', N'McBadden', N'Heather', '707 448-4982', N'301 Putnam',
+N'Vacaville', 'CA', '95688', 0),
+  (N'899-46-2035', N'Ringer', N'Anne', '801 826-0752', N'67 Seventh Av.',
+N'Salt Lake City', 'UT', '84152', 1),
+  (N'998-72-3567', N'Ringer', N'Albert', '801 826-0752', N'67 Seventh Av.',
+N'Salt Lake City', 'UT', '84152', 1);
 
 
 GO
@@ -501,15 +616,16 @@ RAISERROR('Now at the inserts to publishers ....', 0, 1);
 
 GO
 
-INSERT publishers VALUES
-( '0736    ', N'New Moon Books', N'Boston', 'MA', 'USA' ), 
-( '0877    ', N'Binnet & Hardley', N'Washington', 'DC', 'USA' ), 
-( '1389    ', N'Algodata Infosystems', N'Berkeley', 'CA', 'USA' ), 
-( '1622    ', N'Five Lakes Publishing', N'Chicago', 'IL', 'USA' ), 
-( '1756    ', N'Ramona Publishers', N'Dallas', 'TX', 'USA' ), 
-( '9901    ', N'GGG&G', N'M?nchen', NULL, 'Germany' ), 
-( '9952    ', N'Scootney Books', N'New York', 'NY', 'USA' ), 
-( '9999    ', N'Lucerne Publishing', N'Paris', NULL, 'France' )
+INSERT publishers
+VALUES
+  ('0736    ', N'New Moon Books', N'Boston', 'MA', 'USA'),
+  ('0877    ', N'Binnet & Hardley', N'Washington', 'DC', 'USA'),
+  ('1389    ', N'Algodata Infosystems', N'Berkeley', 'CA', 'USA'),
+  ('1622    ', N'Five Lakes Publishing', N'Chicago', 'IL', 'USA'),
+  ('1756    ', N'Ramona Publishers', N'Dallas', 'TX', 'USA'),
+  ('9901    ', N'GGG&G', N'M?nchen', NULL, 'Germany'),
+  ('9952    ', N'Scootney Books', N'New York', 'NY', 'USA'),
+  ('9999    ', N'Lucerne Publishing', N'Paris', NULL, 'France');
 
 GO
 
@@ -1799,92 +1915,141 @@ GO
 
 RAISERROR('Now at the inserts to titles ....', 0, 1);
 
-CREATE TABLE #titles(
-	[title_id] NVARCHAR(80) NOT NULL,
-	[title] [varchar](80) NOT NULL,
-	[type] [char](12) NOT NULL,
-	[pub_id] [char](4) NULL,
-	[price] [money] NULL,
-	[advance] [money] NULL,
-	[royalty] [int] NULL,
-	[ytd_sales] [int] NULL,
-	[notes] [varchar](200) NULL,
-	[pubdate] [datetime] NOT NULL)
+CREATE TABLE #titles
+  (
+  title_id NVARCHAR(80) NOT NULL,
+  title VARCHAR(80) NOT NULL,
+  type CHAR(12) NOT NULL,
+  pub_id CHAR(4) NULL,
+  price MONEY NULL,
+  advance MONEY NULL,
+  royalty INT NULL,
+  ytd_sales INT NULL,
+  notes VARCHAR(200) NULL,
+  pubdate DATETIME NOT NULL
+  );
 GO
-ALTER TABLE #titles ADD  DEFAULT ('UNDECIDED') FOR [type]
+ALTER TABLE #titles ADD DEFAULT ('UNDECIDED') FOR type;
 GO
 
-ALTER TABLE #titles ADD  DEFAULT (getdate()) FOR [pubdate]
+ALTER TABLE #titles ADD DEFAULT (GetDate()) FOR pubdate;
 GO
 
-INSERT into #titles
+INSERT INTO #titles
 VALUES
-( N'PC8888', 'Secrets of Silicon Valley', 'popular_comp', '1389', 20.0000, 8000.0000, 10, 4095, 
-'Muckraking reporting on the world''s largest computer hardware and software manufacturers.', N'1994-06-12T00:00:00' ), 
-( N'BU1032', 'The Busy Executive''s Database Guide', 'business    ', '1389', 19.9900, 5000.0000, 10, 4095, 
-'An overview of available database systems with emphasis on common business applications. Illustrated.', N'1991-06-12T00:00:00' ), 
-( N'PS7777', 'Emotional Security: A New Algorithm', 'psychology  ', '0736', 7.9900, 4000.0000, 10, 3336, 
-'Protecting yourself and your loved ones from undue emotional stress in the modern world. Use of computer and nutritional aids emphasized.', N'1991-06-12T00:00:00' ), 
-( N'PS3333', 'Prolonged Data Deprivation: Four Case Studies', 'psychology  ', '0736', 19.9900, 2000.0000, 10, 4072,
- 'What happens when the data runs dry?  Searching evaluations of information-shortage effects.', N'1991-06-12T00:00:00' ), 
-( N'BU1111', 'Cooking with Computers: Surreptitious Balance Sheets', 'business    ', '1389', 11.9500, 5000.0000, 10, 3876, 
-'Helpful hints on how to use your electronic resources to the best advantage.', N'1991-06-09T00:00:00' ), 
-( N'MC2222', 'Silicon Valley Gastronomic Treats', 'mod_cook    ', '0877', 19.9900, 0.0000, 12, 2032, 
-'Favorite recipes for quick, easy, and elegant meals.', N'1991-06-09T00:00:00' ), 
-( N'TC7777', 'Sushi, Anyone?', 'trad_cook   ', '0877', 14.9900, 8000.0000, 10, 4095, 
-'Detailed instructions on how to make authentic Japanese sushi in your spare time.', N'1991-06-12T00:00:00' ), 
-( N'TC4203', 'Fifty Years in Buckingham Palace Kitchens', 'trad_cook   ', '0877', 11.9500, 4000.0000, 14, 15096, 
-'More anecdotes from the Queen''s favorite cook describing life among English royalty. Recipes, techniques, tender vignettes.', N'1991-06-12T00:00:00' ), 
-( N'PC1035', 'But Is It User Friendly?', 'popular_comp', '1389', 22.9500, 7000.0000, 16, 8780, 
-'A survey of software for the naive user, focusing on the ''friendliness'' of each.', N'1991-06-30T00:00:00' ), 
-( N'BU2075', 'You Can Combat Computer Stress!', 'business    ', '0736', 2.9900, 10125.0000, 24, 18722, 
-'The latest medical and psychological techniques for living with the electronic office. Easy-to-understand explanations.', N'1991-06-30T00:00:00' ), 
-( N'PS2091', 'Is Anger the Enemy?', 'psychology  ', '0736', 10.9500, 2275.0000, 12, 2045,
- 'Carefully researched study of the effects of strong emotions on the body. Metabolic charts included.', N'1991-06-15T00:00:00' ), 
-( N'PS2106', 'Life Without Fear', 'psychology  ', '0736', 7.0000, 6000.0000, 10, 111, 
-'New exercise, meditation, and nutritional techniques that can reduce the shock of daily interactions. Popular audience. Sample menus included, exercise video available separately.', N'1991-10-05T00:00:00' ), 
-( N'MC3021', 'The Gourmet Microwave', 'mod_cook    ', '0877', 2.9900, 15000.0000, 24, 22246,
- 'Traditional French gourmet recipes adapted for modern microwave cooking.', N'1991-06-18T00:00:00' ), 
-( N'TC3218', 'Onions, Leeks, and Garlic: Cooking Secrets of the Mediterranean', 'trad_cook   ', '0877', 20.9500, 7000.0000, 10, 375, 
-'Profusely illustrated in color, this makes a wonderful gift book for a cuisine-oriented friend.', N'1991-10-21T00:00:00' ), 
-( N'BU7832', 'Straight Talk About Computers', 'business    ', '1389', 19.9900, 5000.0000, 10, 4095, 
-'Annotated analysis of what computers can do for you: a no-hype guide for the critical user.', N'1991-06-22T00:00:00' ), 
-( N'PS1372', 'Computer Phobic AND Non-Phobic Individuals: Behavior Variations', 'psychology  ', '0877', 21.5900, 7000.0000, 10, 375,
- 'A must for the specialist, this book examines the difference between those who hate and fear computers and those who don''t.', N'1991-10-21T00:00:00' )
- 
-INSERT into #titles (title_id, title, pub_id)
+  (N'PC8888', 'Secrets of Silicon Valley', 'popular_comp', '1389', 20.0000,
+8000.0000, 10, 4095,
+'Muckraking reporting on the world''s largest computer hardware and software manufacturers.',
+N'1994-06-12T00:00:00'),
+  (N'BU1032', 'The Busy Executive''s Database Guide', 'business    ', '1389',
+19.9900, 5000.0000, 10, 4095,
+'An overview of available database systems with emphasis on common business applications. Illustrated.',
+N'1991-06-12T00:00:00'),
+  (N'PS7777', 'Emotional Security: A New Algorithm', 'psychology  ', '0736',
+7.9900, 4000.0000, 10, 3336,
+'Protecting yourself and your loved ones from undue emotional stress in the modern world. Use of computer and nutritional aids emphasized.',
+N'1991-06-12T00:00:00'),
+  (N'PS3333', 'Prolonged Data Deprivation: Four Case Studies',
+'psychology  ', '0736', 19.9900, 2000.0000, 10, 4072,
+'What happens when the data runs dry?  Searching evaluations of information-shortage effects.',
+N'1991-06-12T00:00:00'),
+  (N'BU1111', 'Cooking with Computers: Surreptitious Balance Sheets',
+'business    ', '1389', 11.9500, 5000.0000, 10, 3876,
+'Helpful hints on how to use your electronic resources to the best advantage.',
+N'1991-06-09T00:00:00'),
+  (N'MC2222', 'Silicon Valley Gastronomic Treats', 'mod_cook    ', '0877',
+19.9900, 0.0000, 12, 2032,
+'Favorite recipes for quick, easy, and elegant meals.',
+N'1991-06-09T00:00:00'),
+  (N'TC7777', 'Sushi, Anyone?', 'trad_cook   ', '0877', 14.9900, 8000.0000,
+10, 4095,
+'Detailed instructions on how to make authentic Japanese sushi in your spare time.',
+N'1991-06-12T00:00:00'),
+  (N'TC4203', 'Fifty Years in Buckingham Palace Kitchens', 'trad_cook   ',
+'0877', 11.9500, 4000.0000, 14, 15096,
+'More anecdotes from the Queen''s favorite cook describing life among English royalty. Recipes, techniques, tender vignettes.',
+N'1991-06-12T00:00:00'),
+  (N'PC1035', 'But Is It User Friendly?', 'popular_comp', '1389', 22.9500,
+7000.0000, 16, 8780,
+'A survey of software for the naive user, focusing on the ''friendliness'' of each.',
+N'1991-06-30T00:00:00'),
+  (N'BU2075', 'You Can Combat Computer Stress!', 'business    ', '0736',
+2.9900, 10125.0000, 24, 18722,
+'The latest medical and psychological techniques for living with the electronic office. Easy-to-understand explanations.',
+N'1991-06-30T00:00:00'),
+  (N'PS2091', 'Is Anger the Enemy?', 'psychology  ', '0736', 10.9500,
+2275.0000, 12, 2045,
+'Carefully researched study of the effects of strong emotions on the body. Metabolic charts included.',
+N'1991-06-15T00:00:00'),
+  (N'PS2106', 'Life Without Fear', 'psychology  ', '0736', 7.0000, 6000.0000,
+10, 111,
+'New exercise, meditation, and nutritional techniques that can reduce the shock of daily interactions. Popular audience. Sample menus included, exercise video available separately.',
+N'1991-10-05T00:00:00'),
+  (N'MC3021', 'The Gourmet Microwave', 'mod_cook    ', '0877', 2.9900,
+15000.0000, 24, 22246,
+'Traditional French gourmet recipes adapted for modern microwave cooking.',
+N'1991-06-18T00:00:00'),
+  (N'TC3218',
+'Onions, Leeks, and Garlic: Cooking Secrets of the Mediterranean',
+'trad_cook   ', '0877', 20.9500, 7000.0000, 10, 375,
+'Profusely illustrated in color, this makes a wonderful gift book for a cuisine-oriented friend.',
+N'1991-10-21T00:00:00'),
+  (N'BU7832', 'Straight Talk About Computers', 'business    ', '1389',
+19.9900, 5000.0000, 10, 4095,
+'Annotated analysis of what computers can do for you: a no-hype guide for the critical user.',
+N'1991-06-22T00:00:00'),
+  (N'PS1372',
+'Computer Phobic AND Non-Phobic Individuals: Behavior Variations',
+'psychology  ', '0877', 21.5900, 7000.0000, 10, 375,
+'A must for the specialist, this book examines the difference between those who hate and fear computers and those who don''t.',
+N'1991-10-21T00:00:00');
+
+INSERT INTO #titles (title_id, title, pub_id)
 VALUES
   ('MC3026', 'The Psychology of Computer Cooking', '0877');
 
-INSERT into #titles (title_id, title, type, pub_id, notes)
+INSERT INTO #titles (title_id, title, type, pub_id, notes)
 VALUES
   ('PC9999', 'Net Etiquette', 'popular_comp', '1389',
 'A must-read for computer conferencing.');
 
 GO
 
-INSERT into titles (title_id, title,  pub_id,
-       price, advance, royalty, ytd_sales,
-       notes, pubdate)
-SELECT #titles.title_id, #titles.title,  #titles.pub_id,
-       #titles.price, #titles.advance, #titles.royalty, #titles.ytd_sales,
-       #titles.notes, #titles.pubdate FROM #titles
+INSERT INTO titles (title_id, title, pub_id, price, advance, royalty,
+ytd_sales, notes, pubdate)
+  SELECT #titles.title_id, #titles.title, #titles.pub_id, #titles.price,
+    #titles.advance, #titles.royalty, #titles.ytd_sales, #titles.notes,
+    #titles.pubdate
+    FROM #titles;
 
 RAISERROR('Now at the inserts to titleauthor ....', 0, 1);
-INSERT titleauthor VALUES
-( N'172-32-1176', N'PS3333', 1, 100 ), ( N'213-46-8915', N'BU1032', 2, 40 ), 
-( N'213-46-8915', N'BU2075', 1, 100 ), ( N'238-95-7766', N'PC1035', 1, 100 ), 
-( N'267-41-2394', N'BU1111', 2, 40 ), ( N'267-41-2394', N'TC7777', 2, 30 ), 
-( N'274-80-9391', N'BU7832', 1, 100 ), ( N'409-56-7008', N'BU1032', 1, 60 ), 
-( N'427-17-2319', N'PC8888', 1, 50 ), ( N'472-27-2349', N'TC7777', 3, 30 ), 
-( N'486-29-1786', N'PC9999', 1, 100 ), ( N'486-29-1786', N'PS7777', 1, 100 ), 
-( N'648-92-1872', N'TC4203', 1, 100 ), ( N'672-71-3249', N'TC7777', 1, 40 ), 
-( N'712-45-1867', N'MC2222', 1, 100 ), ( N'722-51-5454', N'MC3021', 1, 75 ), 
-( N'724-80-9391', N'BU1111', 1, 60 ), ( N'724-80-9391', N'PS1372', 2, 25 ), 
-( N'756-30-7391', N'PS1372', 1, 75 ), ( N'807-91-6654', N'TC3218', 1, 100 ), 
-( N'846-92-7186', N'PC8888', 2, 50 ), ( N'899-46-2035', N'MC3021', 2, 25 ), 
-( N'899-46-2035', N'PS2091', 2, 50 ), ( N'998-72-3567', N'PS2091', 1, 50 ), 
-( N'998-72-3567', N'PS2106', 1, 100 )
+INSERT titleauthor
+VALUES
+  (N'172-32-1176', N'PS3333', 1, 100),
+  (N'213-46-8915', N'BU1032', 2, 40),
+  (N'213-46-8915', N'BU2075', 1, 100),
+  (N'238-95-7766', N'PC1035', 1, 100),
+  (N'267-41-2394', N'BU1111', 2, 40),
+  (N'267-41-2394', N'TC7777', 2, 30),
+  (N'274-80-9391', N'BU7832', 1, 100),
+  (N'409-56-7008', N'BU1032', 1, 60),
+  (N'427-17-2319', N'PC8888', 1, 50),
+  (N'472-27-2349', N'TC7777', 3, 30),
+  (N'486-29-1786', N'PC9999', 1, 100),
+  (N'486-29-1786', N'PS7777', 1, 100),
+  (N'648-92-1872', N'TC4203', 1, 100),
+  (N'672-71-3249', N'TC7777', 1, 40),
+  (N'712-45-1867', N'MC2222', 1, 100),
+  (N'722-51-5454', N'MC3021', 1, 75),
+  (N'724-80-9391', N'BU1111', 1, 60),
+  (N'724-80-9391', N'PS1372', 2, 25),
+  (N'756-30-7391', N'PS1372', 1, 75),
+  (N'807-91-6654', N'TC3218', 1, 100),
+  (N'846-92-7186', N'PC8888', 2, 50),
+  (N'899-46-2035', N'MC3021', 2, 25),
+  (N'899-46-2035', N'PS2091', 2, 50),
+  (N'998-72-3567', N'PS2091', 1, 50),
+  (N'998-72-3567', N'PS2106', 1, 100);
 
 GO
 
@@ -1892,13 +2057,17 @@ RAISERROR('Now at the inserts to stores ....', 0, 1);
 
 GO
 
-INSERT stores VALUES
-( '6380    ', N'Eric the Read Books', N'788 Catamaugus Ave.', N'Seattle', 'WA', '98056' ), 
-( '7066    ', N'Barnum''s', N'567 Pasadena Ave.', N'Tustin', 'CA', '92789' ), 
-( '7067    ', N'News & Brews', N'577 First St.', N'Los Gatos', 'CA', '96745' ), 
-( '7131    ', N'Doc-U-Mat: Quality Laundry and Books', N'24-A Avogadro Way', N'Remulade', 'WA', '98014' ), 
-( '7896    ', N'Fricative Bookshop', N'89 Madison St.', N'Fremont', 'CA', '90019' ), 
-( '8042    ', N'Bookbeat', N'679 Carson St.', N'Portland', 'OR', '89076' )
+INSERT stores
+VALUES
+  ('6380    ', N'Eric the Read Books', N'788 Catamaugus Ave.', N'Seattle',
+'WA', '98056'),
+  ('7066    ', N'Barnum''s', N'567 Pasadena Ave.', N'Tustin', 'CA', '92789'),
+  ('7067    ', N'News & Brews', N'577 First St.', N'Los Gatos', 'CA', '96745'),
+  ('7131    ', N'Doc-U-Mat: Quality Laundry and Books', N'24-A Avogadro Way',
+N'Remulade', 'WA', '98014'),
+  ('7896    ', N'Fricative Bookshop', N'89 Madison St.', N'Fremont', 'CA',
+'90019'),
+  ('8042    ', N'Bookbeat', N'679 Carson St.', N'Portland', 'OR', '89076');
 
 GO
 
@@ -1906,28 +2075,32 @@ RAISERROR('Now at the inserts to sales ....', 0, 1);
 
 GO
 
-INSERT sales VALUES
-( '6380    ', N'6871', N'1994-09-14T00:00:00', 5, 'Net 60', N'BU1032' ), 
-( '6380    ', N'722a', N'1994-09-13T00:00:00', 3, 'Net 60', N'PS2091' ), 
-( '7066    ', N'A2976', N'1993-05-24T00:00:00', 50, 'Net 30', N'PC8888' ), 
-( '7066    ', N'QA7442.3', N'1994-09-13T00:00:00', 75, 'ON invoice', N'PS2091' ), 
-( '7067    ', N'D4482', N'1994-09-14T00:00:00', 10, 'Net 60', N'PS2091' ), 
-( '7067    ', N'P2121', N'1992-06-15T00:00:00', 40, 'Net 30', N'TC3218' ), 
-( '7067    ', N'P2121', N'1992-06-15T00:00:00', 20, 'Net 30', N'TC4203' ), 
-( '7067    ', N'P2121', N'1992-06-15T00:00:00', 20, 'Net 30', N'TC7777' ), 
-( '7131    ', N'N914008', N'1994-09-14T00:00:00', 20, 'Net 30', N'PS2091' ), 
-( '7131    ', N'N914014', N'1994-09-14T00:00:00', 25, 'Net 30', N'MC3021' ), 
-( '7131    ', N'P3087a', N'1993-05-29T00:00:00', 20, 'Net 60', N'PS1372' ), 
-( '7131    ', N'P3087a', N'1993-05-29T00:00:00', 25, 'Net 60', N'PS2106' ), 
-( '7131    ', N'P3087a', N'1993-05-29T00:00:00', 15, 'Net 60', N'PS3333' ), 
-( '7131    ', N'P3087a', N'1993-05-29T00:00:00', 25, 'Net 60', N'PS7777' ), 
-( '7896    ', N'QQ2299', N'1993-10-28T00:00:00', 15, 'Net 60', N'BU7832' ), 
-( '7896    ', N'TQ456', N'1993-12-12T00:00:00', 10, 'Net 60', N'MC2222' ), 
-( '7896    ', N'X999', N'1993-02-21T00:00:00', 35, 'ON invoice', N'BU2075' ), 
-( '8042    ', N'423LL922', N'1994-09-14T00:00:00', 15, 'ON invoice', N'MC3021' ), 
-( '8042    ', N'423LL930', N'1994-09-14T00:00:00', 10, 'ON invoice', N'BU1032' ), 
-( '8042    ', N'P723', N'1993-03-11T00:00:00', 25, 'Net 30', N'BU1111' ), 
-( '8042    ', N'QA879.1', N'1993-05-22T00:00:00', 30, 'Net 30', N'PC1035' )
+INSERT sales
+VALUES
+  ('6380    ', N'6871', N'1994-09-14T00:00:00', 5, 'Net 60', N'BU1032'),
+  ('6380    ', N'722a', N'1994-09-13T00:00:00', 3, 'Net 60', N'PS2091'),
+  ('7066    ', N'A2976', N'1993-05-24T00:00:00', 50, 'Net 30', N'PC8888'),
+  ('7066    ', N'QA7442.3', N'1994-09-13T00:00:00', 75, 'ON invoice',
+N'PS2091'),
+  ('7067    ', N'D4482', N'1994-09-14T00:00:00', 10, 'Net 60', N'PS2091'),
+  ('7067    ', N'P2121', N'1992-06-15T00:00:00', 40, 'Net 30', N'TC3218'),
+  ('7067    ', N'P2121', N'1992-06-15T00:00:00', 20, 'Net 30', N'TC4203'),
+  ('7067    ', N'P2121', N'1992-06-15T00:00:00', 20, 'Net 30', N'TC7777'),
+  ('7131    ', N'N914008', N'1994-09-14T00:00:00', 20, 'Net 30', N'PS2091'),
+  ('7131    ', N'N914014', N'1994-09-14T00:00:00', 25, 'Net 30', N'MC3021'),
+  ('7131    ', N'P3087a', N'1993-05-29T00:00:00', 20, 'Net 60', N'PS1372'),
+  ('7131    ', N'P3087a', N'1993-05-29T00:00:00', 25, 'Net 60', N'PS2106'),
+  ('7131    ', N'P3087a', N'1993-05-29T00:00:00', 15, 'Net 60', N'PS3333'),
+  ('7131    ', N'P3087a', N'1993-05-29T00:00:00', 25, 'Net 60', N'PS7777'),
+  ('7896    ', N'QQ2299', N'1993-10-28T00:00:00', 15, 'Net 60', N'BU7832'),
+  ('7896    ', N'TQ456', N'1993-12-12T00:00:00', 10, 'Net 60', N'MC2222'),
+  ('7896    ', N'X999', N'1993-02-21T00:00:00', 35, 'ON invoice', N'BU2075'),
+  ('8042    ', N'423LL922', N'1994-09-14T00:00:00', 15, 'ON invoice',
+N'MC3021'),
+  ('8042    ', N'423LL930', N'1994-09-14T00:00:00', 10, 'ON invoice',
+N'BU1032'),
+  ('8042    ', N'P723', N'1993-03-11T00:00:00', 25, 'Net 30', N'BU1111'),
+  ('8042    ', N'QA879.1', N'1993-05-22T00:00:00', 30, 'Net 30', N'PC1035');
 
 GO
 
@@ -1935,46 +2108,105 @@ RAISERROR('Now at the inserts to roysched ....', 0, 1);
 
 GO
 
-INSERT roysched VALUES
-( N'BU1032', 0, 5000, 10 ), ( N'BU1032', 5001, 50000, 12 ), ( N'PC1035', 0, 2000, 10 ), 
-( N'PC1035', 2001, 3000, 12 ), ( N'PC1035', 3001, 4000, 14 ), ( N'PC1035', 4001, 10000, 16 ), 
-( N'PC1035', 10001, 50000, 18 ), ( N'BU2075', 0, 1000, 10 ), ( N'BU2075', 1001, 3000, 12 ), 
-( N'BU2075', 3001, 5000, 14 ), ( N'BU2075', 5001, 7000, 16 ), ( N'BU2075', 7001, 10000, 18 ), 
-( N'BU2075', 10001, 12000, 20 ), ( N'BU2075', 12001, 14000, 22 ), ( N'BU2075', 14001, 50000, 24 ), 
-( N'PS2091', 0, 1000, 10 ), ( N'PS2091', 1001, 5000, 12 ), ( N'PS2091', 5001, 10000, 14 ), 
-( N'PS2091', 10001, 50000, 16 ), ( N'PS2106', 0, 2000, 10 ), ( N'PS2106', 2001, 5000, 12 ), 
-( N'PS2106', 5001, 10000, 14 ), ( N'PS2106', 10001, 50000, 16 ), ( N'MC3021', 0, 1000, 10 ), 
-( N'MC3021', 1001, 2000, 12 ), ( N'MC3021', 2001, 4000, 14 ), ( N'MC3021', 4001, 6000, 16 ), 
-( N'MC3021', 6001, 8000, 18 ), ( N'MC3021', 8001, 10000, 20 ), ( N'MC3021', 10001, 12000, 22 ), 
-( N'MC3021', 12001, 50000, 24 ), ( N'TC3218', 0, 2000, 10 ), ( N'TC3218', 2001, 4000, 12 ), 
-( N'TC3218', 4001, 6000, 14 ), ( N'TC3218', 6001, 8000, 16 ), ( N'TC3218', 8001, 10000, 18 ), 
-( N'TC3218', 10001, 12000, 20 ), ( N'TC3218', 12001, 14000, 22 ), ( N'TC3218', 14001, 50000, 24 ), 
-( N'PC8888', 0, 5000, 10 ), ( N'PC8888', 5001, 10000, 12 ), ( N'PC8888', 10001, 15000, 14 ), 
-( N'PC8888', 15001, 50000, 16 ), ( N'PS7777', 0, 5000, 10 ), ( N'PS7777', 5001, 50000, 12 ), 
-( N'PS3333', 0, 5000, 10 ), ( N'PS3333', 5001, 10000, 12 ), ( N'PS3333', 10001, 15000, 14 ), 
-( N'PS3333', 15001, 50000, 16 ), ( N'BU1111', 0, 4000, 10 ), ( N'BU1111', 4001, 8000, 12 ), 
-( N'BU1111', 8001, 10000, 14 ), ( N'BU1111', 12001, 16000, 16 ), ( N'BU1111', 16001, 20000, 18 ), 
-( N'BU1111', 20001, 24000, 20 ), ( N'BU1111', 24001, 28000, 22 ), ( N'BU1111', 28001, 50000, 24 ), 
-( N'MC2222', 0, 2000, 10 ), ( N'MC2222', 2001, 4000, 12 ), ( N'MC2222', 4001, 8000, 14 ), 
-( N'MC2222', 8001, 12000, 16 ), ( N'MC2222', 12001, 20000, 18 ), ( N'MC2222', 20001, 50000, 20 ), 
-( N'TC7777', 0, 5000, 10 ), ( N'TC7777', 5001, 15000, 12 ), ( N'TC7777', 15001, 50000, 14 ), 
-( N'TC4203', 0, 2000, 10 ), ( N'TC4203', 2001, 8000, 12 ), ( N'TC4203', 8001, 16000, 14 ), 
-( N'TC4203', 16001, 24000, 16 ), ( N'TC4203', 24001, 32000, 18 ), ( N'TC4203', 32001, 40000, 20 ), 
-( N'TC4203', 40001, 50000, 22 ), ( N'BU7832', 0, 5000, 10 ), ( N'BU7832', 5001, 10000, 12 ), 
-( N'BU7832', 10001, 15000, 14 ), ( N'BU7832', 15001, 20000, 16 ), ( N'BU7832', 20001, 25000, 18 ), 
-( N'BU7832', 25001, 30000, 20 ), ( N'BU7832', 30001, 35000, 22 ), ( N'BU7832', 35001, 50000, 24 ), 
-( N'PS1372', 0, 10000, 10 ), ( N'PS1372', 10001, 20000, 12 ), ( N'PS1372', 20001, 30000, 14 ), 
-( N'PS1372', 30001, 40000, 16 ), ( N'PS1372', 40001, 50000, 18 )
+INSERT roysched
+VALUES
+  (N'BU1032', 0, 5000, 10),
+  (N'BU1032', 5001, 50000, 12),
+  (N'PC1035', 0, 2000, 10),
+  (N'PC1035', 2001, 3000, 12),
+  (N'PC1035', 3001, 4000, 14),
+  (N'PC1035', 4001, 10000, 16),
+  (N'PC1035', 10001, 50000, 18),
+  (N'BU2075', 0, 1000, 10),
+  (N'BU2075', 1001, 3000, 12),
+  (N'BU2075', 3001, 5000, 14),
+  (N'BU2075', 5001, 7000, 16),
+  (N'BU2075', 7001, 10000, 18),
+  (N'BU2075', 10001, 12000, 20),
+  (N'BU2075', 12001, 14000, 22),
+  (N'BU2075', 14001, 50000, 24),
+  (N'PS2091', 0, 1000, 10),
+  (N'PS2091', 1001, 5000, 12),
+  (N'PS2091', 5001, 10000, 14),
+  (N'PS2091', 10001, 50000, 16),
+  (N'PS2106', 0, 2000, 10),
+  (N'PS2106', 2001, 5000, 12),
+  (N'PS2106', 5001, 10000, 14),
+  (N'PS2106', 10001, 50000, 16),
+  (N'MC3021', 0, 1000, 10),
+  (N'MC3021', 1001, 2000, 12),
+  (N'MC3021', 2001, 4000, 14),
+  (N'MC3021', 4001, 6000, 16),
+  (N'MC3021', 6001, 8000, 18),
+  (N'MC3021', 8001, 10000, 20),
+  (N'MC3021', 10001, 12000, 22),
+  (N'MC3021', 12001, 50000, 24),
+  (N'TC3218', 0, 2000, 10),
+  (N'TC3218', 2001, 4000, 12),
+  (N'TC3218', 4001, 6000, 14),
+  (N'TC3218', 6001, 8000, 16),
+  (N'TC3218', 8001, 10000, 18),
+  (N'TC3218', 10001, 12000, 20),
+  (N'TC3218', 12001, 14000, 22),
+  (N'TC3218', 14001, 50000, 24),
+  (N'PC8888', 0, 5000, 10),
+  (N'PC8888', 5001, 10000, 12),
+  (N'PC8888', 10001, 15000, 14),
+  (N'PC8888', 15001, 50000, 16),
+  (N'PS7777', 0, 5000, 10),
+  (N'PS7777', 5001, 50000, 12),
+  (N'PS3333', 0, 5000, 10),
+  (N'PS3333', 5001, 10000, 12),
+  (N'PS3333', 10001, 15000, 14),
+  (N'PS3333', 15001, 50000, 16),
+  (N'BU1111', 0, 4000, 10),
+  (N'BU1111', 4001, 8000, 12),
+  (N'BU1111', 8001, 10000, 14),
+  (N'BU1111', 12001, 16000, 16),
+  (N'BU1111', 16001, 20000, 18),
+  (N'BU1111', 20001, 24000, 20),
+  (N'BU1111', 24001, 28000, 22),
+  (N'BU1111', 28001, 50000, 24),
+  (N'MC2222', 0, 2000, 10),
+  (N'MC2222', 2001, 4000, 12),
+  (N'MC2222', 4001, 8000, 14),
+  (N'MC2222', 8001, 12000, 16),
+  (N'MC2222', 12001, 20000, 18),
+  (N'MC2222', 20001, 50000, 20),
+  (N'TC7777', 0, 5000, 10),
+  (N'TC7777', 5001, 15000, 12),
+  (N'TC7777', 15001, 50000, 14),
+  (N'TC4203', 0, 2000, 10),
+  (N'TC4203', 2001, 8000, 12),
+  (N'TC4203', 8001, 16000, 14),
+  (N'TC4203', 16001, 24000, 16),
+  (N'TC4203', 24001, 32000, 18),
+  (N'TC4203', 32001, 40000, 20),
+  (N'TC4203', 40001, 50000, 22),
+  (N'BU7832', 0, 5000, 10),
+  (N'BU7832', 5001, 10000, 12),
+  (N'BU7832', 10001, 15000, 14),
+  (N'BU7832', 15001, 20000, 16),
+  (N'BU7832', 20001, 25000, 18),
+  (N'BU7832', 25001, 30000, 20),
+  (N'BU7832', 30001, 35000, 22),
+  (N'BU7832', 35001, 50000, 24),
+  (N'PS1372', 0, 10000, 10),
+  (N'PS1372', 10001, 20000, 12),
+  (N'PS1372', 20001, 30000, 14),
+  (N'PS1372', 30001, 40000, 16),
+  (N'PS1372', 40001, 50000, 18);
 GO
 
-PRINT 'Now at the inserts to discounts ....'
+PRINT 'Now at the inserts to discounts ....';
 
 GO
 
-INSERT discounts VALUES
-( N'Initial Customer', NULL, NULL, NULL, 10.50 ), 
-( N'Volume Discount', NULL, 100, 1000, 6.70 ), 
-( N'Customer Discount', '8042    ', NULL, NULL, 5.00 )
+INSERT discounts
+VALUES
+  (N'Initial Customer', NULL, NULL, NULL, 10.50),
+  (N'Volume Discount', NULL, 100, 1000, 6.70),
+  (N'Customer Discount', '8042    ', NULL, NULL, 5.00);
 
 GO
 
@@ -1983,70 +2215,114 @@ PRINT 'Now at the inserts to jobs ....';
 GO
 
 INSERT jobs (job_desc, min_lvl, max_lvl)
-Values
-( 'New Hire - Job not specified', 10, 10 ), 
-( 'Chief Executive Officer', 200, 250 ), 
-( 'Business Operations Manager', 175, 225 ), 
-( 'Chief Financial Officier', 175, 250 ), 
-( 'Publisher', 150, 250 ), 
-( 'Managing Editor', 140, 225 ), 
-( 'Marketing Manager', 120, 200 ), 
-( 'Public Relations Manager', 100, 175 ), 
-( 'Acquisitions Manager', 75, 175 ), 
-(  'Productions Manager', 75, 165 ), 
-(  'Operations Manager', 75, 150 ), 
-(  'Editor', 25, 100 ), 
-(  'Sales Representative', 25, 100 ), 
-(  'Designer', 25, 100 )
+VALUES
+  ('New Hire - Job not specified', 10, 10),
+  ('Chief Executive Officer', 200, 250),
+  ('Business Operations Manager', 175, 225),
+  ('Chief Financial Officier', 175, 250),
+  ('Publisher', 150, 250),
+  ('Managing Editor', 140, 225),
+  ('Marketing Manager', 120, 200),
+  ('Public Relations Manager', 100, 175),
+  ('Acquisitions Manager', 75, 175),
+  ('Productions Manager', 75, 165),
+  ('Operations Manager', 75, 150),
+  ('Editor', 25, 100),
+  ('Sales Representative', 25, 100),
+  ('Designer', 25, 100);
 GO
 
 RAISERROR('Now at the inserts to employee ....', 0, 1);
 
 GO
 
-INSERT employee VALUES
-( 'PMA42628M', N'Paolo', 'M', 'Accorti', 13, 35, '0877    ', N'1992-08-27T00:00:00' ), 
-( 'PSA89086M', N'Pedro', 'S', 'Afonso', 14, 89, '1389    ', N'1990-12-24T00:00:00' ), 
-( 'VPA30890F', N'Victoria', 'P', 'Ashworth', 6, 140, '0877    ', N'1990-09-13T00:00:00' ), 
-( 'H-B39728F', N'Helen', ' ', 'Bennett', 12, 35, '0877    ', N'1989-09-21T00:00:00' ), 
-( 'L-B31947F', N'Lesley', ' ', 'Brown', 7, 120, '0877    ', N'1991-02-13T00:00:00' ), 
-( 'F-C16315M', N'Francisco', ' ', 'Chang', 4, 227, '9952    ', N'1990-11-03T00:00:00' ), 
-( 'PTC11962M', N'Philip', 'T', 'Cramer', 2, 215, '9952    ', N'1989-11-11T00:00:00' ), 
-( 'A-C71970F', N'Aria', ' ', 'Cruz', 10, 87, '1389    ', N'1991-10-26T00:00:00' ), 
-( 'AMD15433F', N'Ann', 'M', 'Devon', 3, 200, '9952    ', N'1991-07-16T00:00:00' ), 
-( 'ARD36773F', N'Anabela', 'R', 'Domingues', 8, 100, '0877    ', N'1993-01-27T00:00:00' ), 
-( 'PHF38899M', N'Peter', 'H', 'Franken', 10, 75, '0877    ', N'1992-05-17T00:00:00' ), 
-( 'PXH22250M', N'Paul', 'X', 'Henriot', 5, 159, '0877    ', N'1993-08-19T00:00:00' ), 
-( 'CFH28514M', N'Carlos', 'F', 'Hernadez', 5, 211, '9999    ', N'1989-04-21T00:00:00' ), 
-( 'PDI47470M', N'Palle', 'D', 'Ibsen', 7, 195, '0736    ', N'1993-05-09T00:00:00' ), 
-( 'KJJ92907F', N'Karla', 'J', 'Jablonski', 9, 170, '9999    ', N'1994-03-11T00:00:00' ), 
-( 'KFJ64308F', N'Karin', 'F', 'Josephs', 14, 100, '0736    ', N'1992-10-17T00:00:00' ), 
-( 'MGK44605M', N'Matti', 'G', 'Karttunen', 6, 220, '0736    ', N'1994-05-01T00:00:00' ), 
-( 'POK93028M', N'Pirkko', 'O', 'Koskitalo', 10, 80, '9999    ', N'1993-11-29T00:00:00' ), 
-( 'JYL26161F', N'Janine', 'Y', 'Labrune', 5, 172, '9901    ', N'1991-05-26T00:00:00' ), 
-( 'M-L67958F', N'Maria', ' ', 'Larsson', 7, 135, '1389    ', N'1992-03-27T00:00:00' ), 
-( 'Y-L77953M', N'Yoshi', ' ', 'Latimer', 12, 32, '1389    ', N'1989-06-11T00:00:00' ), 
-( 'LAL21447M', N'Laurence', 'A', 'Lebihan', 5, 175, '0736    ', N'1990-06-03T00:00:00' ), 
-( 'ENL44273F', N'Elizabeth', 'N', 'Lincoln', 14, 35, '0877    ', N'1990-07-24T00:00:00' ), 
-( 'PCM98509F', N'Patricia', 'C', 'McKenna', 11, 150, '9999    ', N'1989-08-01T00:00:00' ), 
-( 'R-M53550M', N'Roland', ' ', 'Mendel', 11, 150, '0736    ', N'1991-09-05T00:00:00' ), 
-( 'RBM23061F', N'Rita', 'B', 'Muller', 5, 198, '1622    ', N'1993-10-09T00:00:00' ), 
-( 'HAN90777M', N'Helvetius', 'A', 'Nagy', 7, 120, '9999    ', N'1993-03-19T00:00:00' ), 
-( 'TPO55093M', N'Timothy', 'P', 'O''Rourke', 13, 100, '0736    ', N'1988-06-19T00:00:00' ), 
-( 'SKO22412M', N'Sven', 'K', 'Ottlieb', 5, 150, '1389    ', N'1991-04-05T00:00:00' ), 
-( 'MAP77183M', N'Miguel', 'A', 'Paolino', 11, 112, '1389    ', N'1992-12-07T00:00:00' ), 
-( 'PSP68661F', N'Paula', 'S', 'Parente', 8, 125, '1389    ', N'1994-01-19T00:00:00' ), 
-( 'M-P91209M', N'Manuel', ' ', 'Pereira', 8, 101, '9999    ', N'1989-01-09T00:00:00' ), 
-( 'MJP25939M', N'Maria', 'J', 'Pontes', 5, 246, '1756    ', N'1989-03-01T00:00:00' ), 
-( 'M-R38834F', N'Martine', ' ', 'Rance', 9, 75, '0877    ', N'1992-02-05T00:00:00' ), 
-( 'DWR65030M', N'Diego', 'W', 'Roel', 6, 192, '1389    ', N'1991-12-16T00:00:00' ), 
-( 'A-R89858F', N'Annette', ' ', 'Roulet', 6, 152, '9999    ', N'1990-02-21T00:00:00' ), 
-( 'MMS49649F', N'Mary', 'M', 'Saveley', 8, 175, '0736    ', N'1993-06-29T00:00:00' ), 
-( 'CGS88322F', N'Carine', 'G', 'Schmitt', 13, 64, '1389    ', N'1992-07-07T00:00:00' ), 
-( 'MAS70474F', N'Margaret', 'A', 'Smith', 9, 78, '1389    ', N'1988-09-29T00:00:00' ), 
-( 'HAS54740M', N'Howard', 'A', 'Snyder', 12, 100, '0736    ', N'1988-11-19T00:00:00' ), 
-( 'MFS52347M', N'Martin', 'F', 'Sommer', 10, 165, '0736    ', N'1990-04-13T00:00:00' ), 
-( 'GHT50241M', N'Gary', 'H', 'Thomas', 9, 170, '0736    ', N'1988-08-09T00:00:00' ), 
-( 'DBT39435M', N'Daniel', 'B', 'Tonini', 11, 75, '0877    ', N'1990-01-01T00:00:00' )
-go
+INSERT employee
+VALUES
+  ('PMA42628M', N'Paolo', 'M', 'Accorti', 13, 35, '0877    ',
+N'1992-08-27T00:00:00'),
+  ('PSA89086M', N'Pedro', 'S', 'Afonso', 14, 89, '1389    ',
+N'1990-12-24T00:00:00'),
+  ('VPA30890F', N'Victoria', 'P', 'Ashworth', 6, 140, '0877    ',
+N'1990-09-13T00:00:00'),
+  ('H-B39728F', N'Helen', ' ', 'Bennett', 12, 35, '0877    ',
+N'1989-09-21T00:00:00'),
+  ('L-B31947F', N'Lesley', ' ', 'Brown', 7, 120, '0877    ',
+N'1991-02-13T00:00:00'),
+  ('F-C16315M', N'Francisco', ' ', 'Chang', 4, 227, '9952    ',
+N'1990-11-03T00:00:00'),
+  ('PTC11962M', N'Philip', 'T', 'Cramer', 2, 215, '9952    ',
+N'1989-11-11T00:00:00'),
+  ('A-C71970F', N'Aria', ' ', 'Cruz', 10, 87, '1389    ',
+N'1991-10-26T00:00:00'),
+  ('AMD15433F', N'Ann', 'M', 'Devon', 3, 200, '9952    ',
+N'1991-07-16T00:00:00'),
+  ('ARD36773F', N'Anabela', 'R', 'Domingues', 8, 100, '0877    ',
+N'1993-01-27T00:00:00'),
+  ('PHF38899M', N'Peter', 'H', 'Franken', 10, 75, '0877    ',
+N'1992-05-17T00:00:00'),
+  ('PXH22250M', N'Paul', 'X', 'Henriot', 5, 159, '0877    ',
+N'1993-08-19T00:00:00'),
+  ('CFH28514M', N'Carlos', 'F', 'Hernadez', 5, 211, '9999    ',
+N'1989-04-21T00:00:00'),
+  ('PDI47470M', N'Palle', 'D', 'Ibsen', 7, 195, '0736    ',
+N'1993-05-09T00:00:00'),
+  ('KJJ92907F', N'Karla', 'J', 'Jablonski', 9, 170, '9999    ',
+N'1994-03-11T00:00:00'),
+  ('KFJ64308F', N'Karin', 'F', 'Josephs', 14, 100, '0736    ',
+N'1992-10-17T00:00:00'),
+  ('MGK44605M', N'Matti', 'G', 'Karttunen', 6, 220, '0736    ',
+N'1994-05-01T00:00:00'),
+  ('POK93028M', N'Pirkko', 'O', 'Koskitalo', 10, 80, '9999    ',
+N'1993-11-29T00:00:00'),
+  ('JYL26161F', N'Janine', 'Y', 'Labrune', 5, 172, '9901    ',
+N'1991-05-26T00:00:00'),
+  ('M-L67958F', N'Maria', ' ', 'Larsson', 7, 135, '1389    ',
+N'1992-03-27T00:00:00'),
+  ('Y-L77953M', N'Yoshi', ' ', 'Latimer', 12, 32, '1389    ',
+N'1989-06-11T00:00:00'),
+  ('LAL21447M', N'Laurence', 'A', 'Lebihan', 5, 175, '0736    ',
+N'1990-06-03T00:00:00'),
+  ('ENL44273F', N'Elizabeth', 'N', 'Lincoln', 14, 35, '0877    ',
+N'1990-07-24T00:00:00'),
+  ('PCM98509F', N'Patricia', 'C', 'McKenna', 11, 150, '9999    ',
+N'1989-08-01T00:00:00'),
+  ('R-M53550M', N'Roland', ' ', 'Mendel', 11, 150, '0736    ',
+N'1991-09-05T00:00:00'),
+  ('RBM23061F', N'Rita', 'B', 'Muller', 5, 198, '1622    ',
+N'1993-10-09T00:00:00'),
+  ('HAN90777M', N'Helvetius', 'A', 'Nagy', 7, 120, '9999    ',
+N'1993-03-19T00:00:00'),
+  ('TPO55093M', N'Timothy', 'P', 'O''Rourke', 13, 100, '0736    ',
+N'1988-06-19T00:00:00'),
+  ('SKO22412M', N'Sven', 'K', 'Ottlieb', 5, 150, '1389    ',
+N'1991-04-05T00:00:00'),
+  ('MAP77183M', N'Miguel', 'A', 'Paolino', 11, 112, '1389    ',
+N'1992-12-07T00:00:00'),
+  ('PSP68661F', N'Paula', 'S', 'Parente', 8, 125, '1389    ',
+N'1994-01-19T00:00:00'),
+  ('M-P91209M', N'Manuel', ' ', 'Pereira', 8, 101, '9999    ',
+N'1989-01-09T00:00:00'),
+  ('MJP25939M', N'Maria', 'J', 'Pontes', 5, 246, '1756    ',
+N'1989-03-01T00:00:00'),
+  ('M-R38834F', N'Martine', ' ', 'Rance', 9, 75, '0877    ',
+N'1992-02-05T00:00:00'),
+  ('DWR65030M', N'Diego', 'W', 'Roel', 6, 192, '1389    ',
+N'1991-12-16T00:00:00'),
+  ('A-R89858F', N'Annette', ' ', 'Roulet', 6, 152, '9999    ',
+N'1990-02-21T00:00:00'),
+  ('MMS49649F', N'Mary', 'M', 'Saveley', 8, 175, '0736    ',
+N'1993-06-29T00:00:00'),
+  ('CGS88322F', N'Carine', 'G', 'Schmitt', 13, 64, '1389    ',
+N'1992-07-07T00:00:00'),
+  ('MAS70474F', N'Margaret', 'A', 'Smith', 9, 78, '1389    ',
+N'1988-09-29T00:00:00'),
+  ('HAS54740M', N'Howard', 'A', 'Snyder', 12, 100, '0736    ',
+N'1988-11-19T00:00:00'),
+  ('MFS52347M', N'Martin', 'F', 'Sommer', 10, 165, '0736    ',
+N'1990-04-13T00:00:00'),
+  ('GHT50241M', N'Gary', 'H', 'Thomas', 9, 170, '0736    ',
+N'1988-08-09T00:00:00'),
+  ('DBT39435M', N'Daniel', 'B', 'Tonini', 11, 75, '0877    ',
+N'1990-01-01T00:00:00');
+GO
 
