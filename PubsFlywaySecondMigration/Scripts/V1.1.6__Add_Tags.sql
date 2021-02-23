@@ -1,47 +1,4 @@
-go
-CREATE OR ALTER FUNCTION MoveForeignKeyReferences
-/*
- Select [dbo].[MoveForeignKeyReferences]('dbo.titles','dbo.publications', 'publication_id', 'ON DELETE CASCADE')
- */
-
-(
-    @from Sysname,
-	@to sysname,
-	@ToColumn sysname,
-	@ONClause nvarchar(2000)
-)
-RETURNS nvarchar(MAX)
-AS
-BEGIN
-DECLARE @Statements nvarchar(MAX)=''
-SELECT  @Statements= @Statements+
-'
-ALTER TABLE '+ Object_Schema_Name( FKC.parent_object_id)+'.'+ Object_Name(FKC.parent_object_id) +' DROP
-   CONSTRAINT ' + Object_Name(constraint_object_id)+'
-
-ALTER TABLE '+ Object_Schema_Name( FKC.parent_object_id)+'.'+ Object_Name(FKC.parent_object_id) + ' ADD
-   CONSTRAINT  '+ Object_Name(constraint_object_id) +'
-       FOREIGN KEY ('+ String_Agg(Col_Name(referenced_object_id,Referenced_column_id),', ')+')
-      REFERENCES  '+@to+' ('+@ToColumn+')
-     '+@onClause+'
-
-'
-
-/*SELECT Object_Name(constraint_object_id),
-		Object_Schema_Name( FKC.parent_object_id)+'.'+ Object_Name(FKC.parent_object_id),
-		String_Agg(Col_Name(parent_object_id,parent_column_id),', '),
-		Object_schema_Name( FKC.referenced_object_id)+'.'+ Object_Name(FKC.referenced_object_id),
-		 String_Agg(Col_Name(referenced_object_id,Referenced_column_id),', ')
---SELECT * */
-FROM sys.foreign_key_columns 
-FKC WHERE Object_schema_Name( FKC.referenced_object_id)+'.'+ Object_Name(FKC.referenced_object_id)=@from
-GROUP BY constraint_object_id,parent_object_id, referenced_object_id
-
-   RETURN @statements
-
-END
-go
-
+GO
 
 INSERT INTO publications (Publication_id, title, pub_id, notes, pubdate)
   SELECT title_id, title, pub_id, notes, pubdate FROM Titles;
@@ -134,7 +91,8 @@ SELECT publications.Publication_id AS title_id, publications.title,
   WHERE prices.PriceEndDate IS NULL;
 
 GO
-CREATE   VIEW [dbo].[PublishersByPublicationType] as
+
+CREATE VIEW [dbo].[PublishersByPublicationType] as
 /* A view to provide the number of each type of publication produced
 by each publisher*/
 SELECT Coalesce(publishers.pub_name, '---All types') AS publisher,
@@ -155,7 +113,10 @@ WHERE prices.PriceEndDate IS null
 GROUP BY publishers.pub_name
 WITH ROLLUP
 GO
-CREATE OR alter  VIEW [dbo].[TitlesAndEditionsByPublisher]
+IF Object_Id('[dbo].[TitlesAndEditionsByPublisher]') IS NULL
+    EXEC('CREATE View [dbo].[TitlesAndEditionsByPublisher] AS Select ''nothing'' as first')
+GO
+Alter VIEW [dbo].[TitlesAndEditionsByPublisher]
 AS
 /* A view to provide the number of each type of publication produced
 by each publisher*/
@@ -178,8 +139,11 @@ GO
 PRINT 'Now at the traditional create procedure section ....';
 
 GO
-
-CREATE or alter PROCEDURE byroyalty @percentage INT
+ 
+IF OBJECT_ID('byroyalty') IS NULL
+    EXEC('CREATE PROCEDURE byroyalty AS SET NOCOUNT ON;')
+GO
+ALTER PROCEDURE byroyalty @percentage INT
 AS
   BEGIN
     SELECT titleauthor.au_id
@@ -188,7 +152,10 @@ AS
   END;
 GO
 
-CREATE OR alter PROCEDURE reptq1
+IF OBJECT_ID('reptq1') IS NULL
+    EXEC('CREATE PROCEDURE reptq1 AS SET NOCOUNT ON;')
+GO
+ALTER PROCEDURE reptq1
 AS
   BEGIN
     SELECT CASE WHEN Grouping(publications.pub_id) = 1 
@@ -207,7 +174,10 @@ AS
   END;
 GO
 
-CREATE OR alter PROCEDURE dbo.reptq2
+IF OBJECT_ID('reptq2') IS NULL
+    EXEC('CREATE PROCEDURE reptq2 AS SET NOCOUNT ON;')
+GO
+ALTER PROCEDURE dbo.reptq2
 AS
   BEGIN
     SELECT CASE WHEN Grouping(TN.tag) = 1 THEN 'ALL' ELSE TN.Tag END AS type,
@@ -224,7 +194,10 @@ AS
 
 GO
 
-CREATE OR alter PROCEDURE dbo.reptq3 @lolimit dbo.Dollars, @hilimit dbo.Dollars,
+IF OBJECT_ID('reptq3') IS NULL
+    EXEC('CREATE PROCEDURE reptq3 AS SET NOCOUNT ON;')
+GO
+ALTER PROCEDURE dbo.reptq3 @lolimit dbo.Dollars, @hilimit dbo.Dollars,
   @type CHAR(12)
 AS
   BEGIN
