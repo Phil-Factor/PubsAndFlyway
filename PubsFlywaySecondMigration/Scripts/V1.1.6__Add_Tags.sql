@@ -91,8 +91,10 @@ SELECT publications.Publication_id AS title_id, publications.title,
   WHERE prices.PriceEndDate IS NULL;
 
 GO
-
-CREATE VIEW [dbo].[PublishersByPublicationType] as
+IF Object_Id('[dbo].[PublishersByPublicationType]') IS NULL
+    EXEC('CREATE View [dbo].[PublishersByPublicationType] AS Select ''nothing'' as first')
+GO
+alter VIEW [dbo].[PublishersByPublicationType] as
 /* A view to provide the number of each type of publication produced
 by each publisher*/
 SELECT Coalesce(publishers.pub_name, '---All types') AS publisher,
@@ -113,27 +115,9 @@ WHERE prices.PriceEndDate IS null
 GROUP BY publishers.pub_name
 WITH ROLLUP
 GO
+
 IF Object_Id('[dbo].[TitlesAndEditionsByPublisher]') IS NULL
     EXEC('CREATE View [dbo].[TitlesAndEditionsByPublisher] AS Select ''nothing'' as first')
-GO
-Alter VIEW [dbo].[TitlesAndEditionsByPublisher]
-AS
-/* A view to provide the number of each type of publication produced
-by each publisher*/
-SELECT publishers.pub_name AS publisher, title,
-  String_Agg
-    (
-    Publication_type + ' ($' + Convert(VARCHAR(20), price) + ')', ', '
-    ) AS ListOfEditions
-  FROM dbo.publishers
-    INNER JOIN dbo.publications
-      ON publications.pub_id = publishers.pub_id
-    INNER JOIN editions
-      ON editions.publication_id = publications.Publication_id
-    INNER JOIN dbo.prices
-      ON prices.Edition_id = editions.Edition_id
-  WHERE prices.PriceEndDate IS NULL
-  GROUP BY publishers.pub_name, title;
 GO
 
 PRINT 'Now at the traditional create procedure section ....';
@@ -217,3 +201,4 @@ AS
       GROUP BY titles.pub_id, TN.Tag WITH ROLLUP;
   END;
 GO
+
