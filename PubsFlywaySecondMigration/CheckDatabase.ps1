@@ -17,9 +17,9 @@ if ([string]::IsNullOrEmpty($ExecutablePath)){$ExecutablePath=$pwd}
 .("$executablepath\DatabaseBuildAndMigrateTasks.ps1")
 
 $DatabaseDetails=@{'pwd'=''; #Always leave blank
-                  'uid'='PhilFactor'#leave blank unless you use credentials
-                  ;'Database'='PubsOne';# fill this in please
-                  ;'server'='Philf01';# We need to know the server!
+                  'uid'='MyUID'#leave blank unless you use credentials
+                  ;'Database'='MyDatabase';# fill this in please
+                  ;'server'='MyServer';# We need to know the server!
                   ;'port' = $null; #Not normally needed with SQL Server. add if required
                   #set to $null or leave it out if you want to let jdbc detect it 
                   'Project'='Pubs';# the name of the project-needed for saving files

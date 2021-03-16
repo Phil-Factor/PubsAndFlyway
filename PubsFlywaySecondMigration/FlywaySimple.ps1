@@ -26,9 +26,9 @@ $ProjectDescription='A sample project to demonstrate Flyway, using the old Pubs 
 # and here are our project details. The project folder. It works rather like Case-notes
 # in that it is read-write. It is passed between tasks.
 $DatabaseDetails=@{'pwd'=''; #Always leave blank
-                  'uid'='PhilFactor'#leave blank unless you use credentials
-                  ;'Database'='PubsOne';# fill this in please
-                  ;'server'='Philf01';# We need to know the server!
+                  'uid'='MyUID'#leave blank unless you use credentials
+                  ;'Database'='MyDatabase';# fill this in please
+                  ;'server'='MyServer';# We need to know the server!
                   ;'port' = $null; #Not normally needed with SQL Server. add if required
                   #set to $null or leave it out if you want to let jdbc detect it 
                   'Project'='Pubs';# the name of the project-needed for saving files
