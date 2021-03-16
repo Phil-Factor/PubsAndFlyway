@@ -1,23 +1,31 @@
 /* add all missing indexes on foreign keys */
 
-IF  (IndexProperty(Object_Id('dbo.editions'),'Publicationid_index','IndexID') IS NULL)
+IF  (Object_Id('dbo.editions') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.editions'),'Publicationid_index','IndexID') IS NULL)
 	CREATE INDEX Publicationid_index ON dbo.Editions(publication_id)
-IF  (IndexProperty(Object_Id('dbo.prices'),'Editionid_index','IndexID') IS NULL)
+IF  (Object_Id('dbo.prices') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.prices'),'Editionid_index','IndexID') IS NULL)
 	CREATE INDEX editionid_index ON dbo.prices(Edition_id)
-IF  (IndexProperty(Object_Id('dbo.Discounts'),'Storid_index','IndexID') IS NULL)
+IF  (Object_Id('dbo.Discounts') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.Discounts'),'Storid_index','IndexID') IS NULL)
 	CREATE INDEX Storid_index ON dbo.Discounts(Stor_id)
-IF  (IndexProperty(Object_Id('dbo.TagTitle'),'Titleid_index','IndexID') IS NULL)
+IF  (Object_Id('dbo.TagTitle') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.TagTitle'),'Titleid_index','IndexID') IS NULL)
 	CREATE INDEX Titleid_index ON dbo.TagTitle(title_id)
-IF  (IndexProperty(Object_Id('dbo.TagTitle'),'TagName_index','IndexID') IS NULL)
+IF  (Object_Id('dbo.TagTitle') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.TagTitle'),'TagName_index','IndexID') IS NULL)
 	CREATE INDEX TagName_index ON dbo.TagTitle(Tagname_id)
-IF  (IndexProperty(Object_Id('dbo.employee'),'JobID_index','IndexID') IS NULL)
+IF  (Object_Id('dbo.employee') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.employee'),'JobID_index','IndexID') IS NULL)
 	CREATE INDEX JobID_index ON dbo.employee(Job_id)
-IF  (IndexProperty(Object_Id('dbo.employee'),'pub_id_index','IndexID') IS NULL)
+IF  (Object_Id('dbo.employee') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.employee'),'pub_id_index','IndexID') IS NULL)
 	CREATE INDEX pub_id_index ON dbo.employee(pub_id)
-IF  (IndexProperty(Object_Id('dbo.publications'),'pubid_index','IndexID') IS NULL)
+IF  (Object_Id('dbo.publications') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.publications'),'pubid_index','IndexID') IS NULL)
 	CREATE INDEX pubid_index ON dbo.publications(pub_id)
 
-
+SELECT * FROM sys.indexes WHERE name LIKE '%index' and OBJECTPROPERTY(object_id,'IsSystemTable')=0
 /*
 Undo
 
@@ -37,7 +45,8 @@ IF  (IndexProperty(Object_Id('dbo.publications'),'pubid_index','IndexID') IS NOT
 	Drop  INDEX pubid_index ON dbo.publications
 
 */
-
+/*write the documentation to all the tables specified in the list that exist in the
+database either writing to, or updating, what is there */
 DECLARE @WhatToDocument TABLE (TheOrder INT IDENTITY, Tablename sysname, TheDescription NVARCHAR(4000));
 INSERT INTO @WhatToDocument (Tablename, TheDescription)
 VALUES
@@ -57,21 +66,25 @@ VALUES
   ('dbo.TagTitle', 'This relates tags to publications so that publications can have more than one'),
   ('dbo.titleauthor', 'this is a table that relates authors to publications, and gives their order of listing and royalty%');
 
-DECLARE @ii INT, @iiMax INT;
+DECLARE @ii INT, @iiMax INT; --the iterators
+--the values fetched for each row
 DECLARE @TableName sysname, @Schemaname sysname,
-  @TheDescription NVARCHAR(4000);
+  @TheDescription NVARCHAR(4000),@Object_id int;
+--initialise the iterator
 SELECT @ii = 1, @iiMax = Max(TheOrder) FROM @WhatToDocument;
 
 WHILE @ii <= @iiMax
   BEGIN
     SELECT @Schemaname = Object_Schema_Name(Object_Id(Tablename)),
       @TableName = Object_Name(Object_Id(Tablename)),
-      @TheDescription = TheDescription
+      @TheDescription = TheDescription,
+	  @Object_id=Object_Id(TableName)
         FROM @WhatToDocument
         WHERE @ii = TheOrder;
-    IF NOT EXISTS
+      IF (@Object_id IS NOT NULL) --if the table exists
+    IF NOT EXISTS --does the extended property exist?
       (
-      SELECT *
+      SELECT 1
         FROM sys.fn_listextendedproperty
 		  (N'MS_Description', N'SCHEMA',@Schemaname,
            N'TABLE',@TableName, null, null
@@ -88,5 +101,3 @@ WHILE @ii <= @iiMax
         @level1name = @TableName;;
     SELECT @ii = @ii + 1; -- on to the next one
   END;
-
-SELECT Object_Name(major_id), NAME, value FROM sys.extended_properties
