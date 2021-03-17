@@ -33,7 +33,8 @@ $FetchAnyRequiredPasswords = {
 }
 
 <#This scriptblock checks the code in the database for any issues, using SQL Code Guard
-to do all the work. #>
+to do all the work. This runs SQL Codeguard and saves the report. It also reports back
+in the $DatabaseDetails Hashtable.#>
 
 $CheckCodeInDatabase = {
 	Param ($param1) # the parameter is hashtable that contains all the useful values
@@ -93,19 +94,21 @@ $CheckCodeInDatabase = {
 	{
 		
 		[xml]$XmlDocument = Get-Content -Path "$MyDatabasePath\codeAnalysis.xml"
-		$param1.warnings += $XmlDocument.root.GetEnumerator() | foreach{
+        $warnings=@();
+		$warnings += $XmlDocument.root.GetEnumerator() | foreach{
 			$name = $_.name.ToString();
 			$_.issue
 		} |
 		select-object  @{ Name = "Object"; Expression = { $name } },
 					  code, line, text
+		$param1.Warnings += @{ 'Name' = 'CheckCodeInDatabase'; Issues = $warnings }
 	}
 }
 
 
 
-<#This scriptblock gets the current version of a flyway_schema_history database from the 
-table in the database. if there is no Flyway Database, then it returns a version of 0.0.0
+<#This scriptblock gets the current version of a flyway_schema_history data from the 
+table in the database. if there is no Flyway Data, then it returns a version of 0.0.0
  #>
 $GetCurrentVersion = {
 	Param ($param1) # the parameter is hashtable that contains all the useful values
@@ -202,8 +205,11 @@ $IsDatabaseIdenticalToSource = {
 				$problems += "That Went Badly (code $LASTEXITCODE) with paramaters $Arguments."
 			}
 		}
-		else { $identical = $null;  "source folder did not exist so can't check" }
-		$param1.Checked = $identical
+		else { $identical = $null; 
+		$param1.Warnings += @{ 'Name' = 'IsDatabaseIdenticalToSource'; 
+            'Issues' = "source folder '$MyDatabasePath' did not exist so can't check" }
+            }
+ 		$param1.Checked = $identical
 	}
 	if ($problems.Count -gt 0)
          { $param1.Problems += @{'Name'='GetCurrentVersion';Issues=$problems} }
@@ -272,6 +278,7 @@ $CreateBuildScriptIfNecessary = {
 		# can use a hash-table 
 		"/server1:$($param1.server)",
 		"/database1:$($param1.database)",
+        "/exclude:table:flyway_schema_history",
 		"/empty2",
 		"/force", # 
 		"/options:NoTransactions,NoErrorHandling", # so that we can use the script with Flyway more easily
