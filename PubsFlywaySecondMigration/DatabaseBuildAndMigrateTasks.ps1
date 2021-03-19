@@ -184,6 +184,7 @@ has been an error #>
 $IsDatabaseIdenticalToSource = {
 	Param ($param1) # the parameter is hashtable that contains all the useful values
 	$problems = @();
+    $warnings = @();
 	@('version', 'server', 'database', 'project') |
 	foreach{ if ($param1.$_ -eq $null) { $problems += "no value for '$($_)'" } }
     if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
@@ -194,7 +195,7 @@ $IsDatabaseIdenticalToSource = {
 	    }
     $EscapedValues | foreach{ $param1 += $_ }
     }
-	if ($param1.Version -eq '0.0.0') { $problems += "Cannot compare an empty database" }
+	if ($param1.Version -eq '0.0.0') { $identical=$null; $warnings += "Cannot compare an empty database" }
 	$GoodVersion = try { $null = [Version]$param1.Version; $true }
 	catch { $false }
 	if (-not ($goodVersion))
@@ -240,14 +241,16 @@ $IsDatabaseIdenticalToSource = {
 				$problems += "That Went Badly (code $LASTEXITCODE) with paramaters $Arguments."
 			}
 		}
-		else { $identical = $null; 
-		$param1.Warnings += @{ 'Name' = 'IsDatabaseIdenticalToSource'; 
-            'Issues' = "source folder '$MyDatabasePath' did not exist so can't check" }
+		else { $identical = $null;
+                $Warnings="source folder '$MyDatabasePath' did not exist so can't check" 
             }
- 		$param1.Checked = $identical
+ 		
 	}
-	if ($problems.Count -gt 0)
-         { $param1.Problems += @{'Name'='GetCurrentVersion';Issues=$problems} }
+   $param1.Checked = $identical
+   if ($problems.Count -gt 0)
+         { $param1.Problems += @{'Name'='IsDatabaseIdenticalToSource';'Issues'=$problems} }
+   if ($warnings.Count -gt 0)
+        {$param1.Warnings += @{ 'Name' = 'IsDatabaseIdenticalToSource'; 'Issues' = $warnings} }
 }
 
 
