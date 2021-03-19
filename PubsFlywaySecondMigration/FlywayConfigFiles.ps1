@@ -19,7 +19,7 @@ Set-Alias Flyway  "$env:ChocolateyInstall\lib\flyway.commandline\tools\flyway-7.
 # and here are our project details. The project folder
 $configuration = @{
 	# to describe the database for monitoring systems and reporting
-	'ProjectFolder' = 'S:\work\Github\PubsAndFlyway\PubsFlywaySecondMigration'; # where the migration scripts are stored
+	'ProjectFolder' = 'MyPathTo\PubsFlywaySecondMigration'; # where the migration scripts are stored
 	'ConfDirectory' = "$env:USERPROFILE\FlywayConf\*.conf"
 	'GlobalSettings' = @{
 		'outputType' = 'json';
