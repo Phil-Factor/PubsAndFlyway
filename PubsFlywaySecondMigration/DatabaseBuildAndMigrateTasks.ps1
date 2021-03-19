@@ -7,7 +7,16 @@ $FetchAnyRequiredPasswords = {
 	Param ($param1) # the parameter is hashtable that contains all the useful values
 	@('server') |
 	foreach{ if ($param1.$_ -eq $null) { "no value for '$($_)'" } }
-	# now we get the password if necessary
+    # some values, especially server names, have to be escaped when used in file paths.
+    if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
+    {
+	    $EscapedValues = $param1.GetEnumerator() | 
+           where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
+		     @{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+	    }
+    $EscapedValues | foreach{ $param1 += $_ }
+    }
+    # now we get the password if necessary
 	if ($param1.uid -ne '') #then it is using SQL Server Credentials
 	{
 		# we see if we've got these stored already
@@ -43,8 +52,16 @@ $CheckCodeInDatabase = {
 	$Problems = @();
 	#is that alias correct?
 	if (!(test-path  ((Get-alias -Name codeguard).definition) -PathType Leaf))
-	{ $Problems += 'The alias for Codeguard is not set correctly yet' }
-	#check that all the values we need are in the hashtable
+	    { $Problems += 'The alias for Codeguard is not set correctly yet' }
+    if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
+    {
+	    $EscapedValues = $param1.GetEnumerator() | 
+           where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
+		     @{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+	    }
+    $EscapedValues | foreach{ $param1 += $_ }
+    }
+    #check that all the values we need are in the hashtable
 	@('server', 'Database', 'version', 'EscapedProject') |
 	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
 	#now we create the parameters for CodeGuard.
@@ -113,6 +130,14 @@ table in the database. if there is no Flyway Data, then it returns a version of 
 $GetCurrentVersion = {
 	Param ($param1) # the parameter is hashtable that contains all the useful values
 	@('server', 'database') | foreach{ if ($param1.$_ -eq $null) { write-error "no value for '$($_)'" } }
+    if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
+    {
+	    $EscapedValues = $param1.GetEnumerator() | 
+           where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
+		     @{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+	    }
+    $EscapedValues | foreach{ $param1 += $_ }
+    }
 	#the alias must be set to the path of your installed version of SQL Compare
 	$problems = @();
 	Set-Alias SQLCmd   "$($env:ProgramFiles)\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\sqlcmd.exe" -Scope local
@@ -161,6 +186,14 @@ $IsDatabaseIdenticalToSource = {
 	$problems = @();
 	@('version', 'server', 'database', 'project') |
 	foreach{ if ($param1.$_ -eq $null) { $problems += "no value for '$($_)'" } }
+    if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
+    {
+	    $EscapedValues = $param1.GetEnumerator() | 
+           where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
+		     @{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+	    }
+    $EscapedValues | foreach{ $param1 += $_ }
+    }
 	if ($param1.Version -eq '0.0.0') { $problems += "Cannot compare an empty database" }
 	$GoodVersion = try { $null = [Version]$param1.Version; $true }
 	catch { $false }
@@ -168,6 +201,8 @@ $IsDatabaseIdenticalToSource = {
 	{ $problems += "Bad version number '$($param1.Version)'" }
 	#the alias must be set to the path of your installed version of SQL Compare
 	Set-Alias SQLCompare "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.exe" -Scope Script
+	if (!(test-path  ((Get-alias -Name SQLCompare).definition) -PathType Leaf))
+	    { $Problems += 'The alias for SQLCompare is not set correctly yet' }
 	if ($problems.Count -eq 0)
 	{
 		#the database scripts path would be up to you to define, of course
@@ -228,8 +263,18 @@ $CreateScriptFoldersIfNecessary = {
     $Problem=@();	#We check that it contains the keys for the values that we need 
     @('version', 'server', 'database', 'project') |
 	foreach{ if ($param1.$_ -eq $null) { $problems += "no key for the '$($_)'" } }
+    if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
+    {
+	    $EscapedValues = $param1.GetEnumerator() | 
+           where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
+		     @{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+	    }
+    $EscapedValues | foreach{ $param1 += $_ }
+    }
 	#the alias must be set to the path of your installed version of SQL Compare
 	Set-Alias SQLCompare "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.exe" -Scope Script
+	if (!(test-path  ((Get-alias -Name SQLCompare).definition) -PathType Leaf))
+	    { $Problems += 'The alias for SQLCompare is not set correctly yet' }
 	#the database scripts path would be up to you to define, of course
 	$MyDatabasePath = "$($env:USERPROFILE)\Documents\GitHub\$($param1.EscapedProject)\$($param1.Version)\Source"
 	$Args = @(
@@ -270,8 +315,18 @@ $CreateBuildScriptIfNecessary = {
 	Param ($param1) # the parameter is hashtable that contains all the useful values
     $problems=@();
 	@('version', 'server', 'database', 'project') | foreach{ if ($param1.$_ -eq $null) { $Problems+="no value for '$($_)'" } }
-	#the alias must be set to the path of your installed version of SQL Compare
+	if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
+    {
+	    $EscapedValues = $param1.GetEnumerator() | 
+           where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
+		     @{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+	    }
+    $EscapedValues | foreach{ $param1 += $_ }
+    }
+#the alias must be set to the path of your installed version of SQL Compare
 	Set-Alias SQLCompare "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.exe" -Scope Script
+	if (!(test-path  ((Get-alias -Name SQLCompare).definition) -PathType Leaf))
+	    { $Problems += 'The alias for SQLCompare is not set correctly yet' }
 	#the database scripts path would be up to you to define, of course
 	$MyDatabasePath = "$($env:USERPROFILE)\Documents\GitHub\$($param1.EscapedProject)\$($param1.Version)\Scripts"
 	$Args = @(# we create an array in order to splat the parameters. With many command-line apps you

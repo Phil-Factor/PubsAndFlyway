@@ -25,7 +25,6 @@ IF  (Object_Id('dbo.publications') IS NOT NULL
 	AND IndexProperty(Object_Id('dbo.publications'),'pubid_index','IndexID') IS NULL)
 	CREATE INDEX pubid_index ON dbo.publications(pub_id)
 
-SELECT * FROM sys.indexes WHERE name LIKE '%index' and OBJECTPROPERTY(object_id,'IsSystemTable')=0
 /*
 Undo
 
