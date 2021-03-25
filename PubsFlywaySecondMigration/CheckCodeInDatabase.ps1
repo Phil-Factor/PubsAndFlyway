@@ -45,6 +45,7 @@ $FetchOrSaveDetailsOfParameterSet, #save parameters so you can recall them later
 $FetchAnyRequiredPasswords, #passwords are kept in an encrypte4d file in the user area
 $GetCurrentVersion, #get the current version so you can save the code report in the right place
 $CheckCodeInDatabase, #now look at all the code in the modues (Procs, functions and so on)
+$CheckCodeInMigrationFiles, #make sure we've done a code analysis on the files too
 $FormatTheBasicFlywayParameters #so we can use flyway
 )
 $Invocations|foreach{if ($DatabaseDetails.Problems.Count -eq 0)
@@ -55,3 +56,4 @@ if ($DatabaseDetails.Problems.Count -gt 0) #list out exert error and which task 
   }
 $DatabaseDetails.Warnings.CheckCodeInDatabase
 	Flyway info  $DatabaseDetails.FlyWayArgs
+
