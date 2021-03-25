@@ -1,5 +1,6 @@
-﻿$MyProject='pubs' #Must fill in the name of the project. This determines where 
- #script artefacts are kept
+﻿
+$MyProject = 'pubs' #Must fill in the name of the project. This determines where 
+#script artefacts are kept
 <#
 The tasks are in a separate script. It is placed in the same directory as this 
 script.
@@ -23,6 +24,7 @@ if ([string]::IsNullOrEmpty($ExecutablePath)) { $ExecutablePath = $pwd }
 <#
 # so we define our project-wide settings
 $DatabaseDetails = @{
+    'name' ='TheNameToGiveThisDatabaseAndProject';
     'ProjectFolder' = 'MyPathToTheFlywayFolder\PubsFlywaySecondMigration';
     'ProjectDescription'='A sample project to demonstrate Flyway, using the old Pubs database';
 	'pwd' = ''; #Always leave blank
@@ -35,49 +37,73 @@ $DatabaseDetails = @{
 	'Version' = ''; # current version of database - 
 	# leave blank unless you know
 	'Checked' = $false; # has it been checked against a source directory?
-	'Problems' = @();
-	'Warnings' = @()
      }
 #>
-$DatabaseDetails=@{
-    'name' = 'Arthur';'Project' = $MyProject;}
-
-@($FetchOrSaveDetailsOfParameterSet,
-$FetchAnyRequiredPasswords,
-$FormatTheBasicFlywayParameters
-)| foreach {
-   if ($DatabaseDetails.Problems.Count -eq 0) 
-    {$_.Invoke($DatabaseDetails) } }
-
-if ($DatabaseDetails.Problems.Count -eq 0) 
-    {Flyway clear  $DatabaseDetails.FlyWayArgs}
-$WhatWasReturned = '';
- <# just add, comment in, or comment out anything you want or not #>
-$Invocations = @(
-# $FetchOrSaveDetailsOfParameterSet,
-<#This adds escaped versions of the project name, server and database. It also 
-picks up the saved parameters from file if you just provide a name and a project,
-or saves all the parameters to file if you want to do that using the name you provide 
-but if you don't provide a name than it does nothing except check that you have escapes #>
-#$FetchAnyRequiredPasswords, #picks up a password for the database if you've provided a UID
-$GetCurrentVersion, #checks the database and gets the current version number 
-$CheckCodeInDatabase, #checks the code in the database for issues if this hasn't been done yet
- $IsDatabaseIdenticalToSource,# if it can, checks to see if the database really is what you think
- $CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version
- $CreateScriptFoldersIfNecessary #writes out a source folder with an object level script if absent
- )
-$Invocations | foreach{ if ($DatabaseDetails.Problems.Count -eq 0) 
-    {$_.Invoke($DatabaseDetails) } }
-$OurProblems = ''
-
-if ($DatabaseDetails.Problems.Count -gt 0)
-{
-	$ourProblems = $DatabaseDetails.Problems | foreach{ $TheName = $_.name; $_.Issues } | foreach{ "$($TheName): $_" }
-	Write-warning "We hit a problem with $($ourProblems -join '-')"
+$DatabaseDetails = @{
+	'name' = 'MyDatabase'; 'Project' = $MyProject;
 }
-if ($DatabaseDetails.Warnings.Count -gt 0)
-{
-	$ourwarnings = $DatabaseDetails.Warnings | foreach{ $TheName = $_.name; $_.Issues } | foreach{ "$($TheName): $_" }
-	Write-output "We had a Warning with $($ourWarnings -join "`n")"
+
+<# first grab all those boring details from disk for the project and database #>  
+# we line out our tasks in an array 
+@($FetchOrSaveDetailsOfParameterSet, #add escaped names, pick up details by name and project
+	$FetchAnyRequiredPasswords, #get any passwords needed from secure storage
+	$FormatTheBasicFlywayParameters, #so you can run flyway
+    $CheckCodeInMigrationFiles  # check that all migration files have had a report
+) | foreach { #we execute these tasks in turn 
+	if ($DatabaseDetails.Problems.Count -eq 0)
+	{ $_.Invoke($DatabaseDetails) }
 }
+<# at this point we are ready to do all the standard tasks. For this demonstration, we'll
+clean our test database #>
+if ($DatabaseDetails.Problems.Count -eq 0)
+{
+	Flyway clean  $DatabaseDetails.FlyWayArgs
+}
+<# now we will upgrade one file at a time and test out all our tasks as we go. We should
+end up with a scripts directory with source and build scripts. 
+The second time we run this, the drift check will kick in on every version because in each 
+case we have a scripts directory. You can try stopping after every version and tampering
+with the database to see whether it picks up your changes #> 
+# list out all the existing versions in order
+dir "$($DatabaseDetails.projectFolder)/scripts/V*.sql" |
+foreach{ [version]($_.Name -replace 'V(?<Version>[.\d]+).+', '${Version}') } |
+Sort-Object | foreach{
+	if ($DatabaseDetails.Problems.Count -eq 0)
+	{
+		$Invocations = @(
+			$GetCurrentVersion, #checks the database and gets the current version number 
+			#$CheckCodeInDatabase, #checks the code in the database for issues if this hasn't been done yet
+			$IsDatabaseIdenticalToSource, # if it can, checks to see if the database really is what you think
+		)
+		$Invocations | foreach{
+			if ($DatabaseDetails.Problems.Count -eq 0)
+			{ Write-Verbose "Executing from line $($_.startposition.StartLine)"; $_.Invoke($DatabaseDetails) }
+		}
+		Flyway migrate "-target=$($_.ToString())"  $DatabaseDetails.FlyWayArgs
+		$Invocations = @(
+			$GetCurrentVersion, #checks the database and gets the current version number 
+			$CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version
+			$CreateScriptFoldersIfNecessary #writes out a source folder with an object level script if absent
+		)
+		$Invocations | foreach{
+			if ($DatabaseDetails.Problems.Count -eq 0)
+			{ Write-Verbose "Executing from line $($_.startposition.StartLine)"; $_.Invoke($DatabaseDetails) }
+		}
+	}
+}
+#list out evey problem with where it happened
+if ($DatabaseDetails.Problems.Count -gt 0) #list out exert error and which task failed
+  {$DatabaseDetails.Problems.GetEnumerator()|Foreach{"$($_.Key)---------";$_.Value}|foreach {$_}
+  }
+# and list out every warning.
+if ($DatabaseDetails.Warnings.Count -gt 0) #list out our warnings
+  {$DatabaseDetails.Warnings.GetEnumerator()|Foreach{"$($_.Key)---------";$_.Value}|foreach {$_}
+  }
+
+
+  $DatabaseDetails = @{
+	'name' = 'MyDatabase'; 'Project' = $MyProject;
+} 
+#You can then fill in the $databaseDetails array by executing
+$FetchOrSaveDetailsOfParameterSet.invoke($DatabaseDetails)
 

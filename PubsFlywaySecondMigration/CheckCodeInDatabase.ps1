@@ -1,6 +1,9 @@
 ﻿
 #create an alias for the commandline Flyway, 
-Set-Alias Flyway  'MyPathTo\flyway.cmd' -Scope local
+#Set-Alias Flyway  'MyPathTo\flyway.cmd' -Scope local
+#create an alias for the commandline Flyway, 
+Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.3.1\flyway.cmd' -Scope local
+
 if (!(test-path  ((Get-alias -Name Flyway ).definition) -PathType Leaf))
    {Write-error "Sorry, but you need a path to the Flyway Commandline"}
 
@@ -24,7 +27,7 @@ if ($executablepath -eq '')
 if ([string]::IsNullOrEmpty($ExecutablePath)){$ExecutablePath=$pwd}
 .("$executablepath\DatabaseBuildAndMigrateTasks.ps1")
 
-$DatabaseDetails=$DatabaseDetails = 
+<# $DatabaseDetails=$DatabaseDetails = 
     @{
     'name' ='TheNameToGiveThisDatabaseAndProject';
     'ProjectFolder' = 'MyPathToTheFlywayFolder\PubsFlywaySecondMigration';
@@ -40,6 +43,10 @@ $DatabaseDetails=$DatabaseDetails =
 	# leave blank unless you know
      }
 
+#>
+$DatabaseDetails = @{
+	'name' = 'Arthur'; 'Project' = $MyProject;
+}
 $Invocations=@(
 $FetchOrSaveDetailsOfParameterSet, #save parameters so you can recall them later.
 $FetchAnyRequiredPasswords, #passwords are kept in an encrypte4d file in the user area
