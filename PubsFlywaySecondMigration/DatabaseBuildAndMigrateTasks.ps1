@@ -96,7 +96,10 @@ $FetchOrSaveDetailsOfParameterSet = {
 			$TheActualParameters.psobject.properties |
 			Foreach { if ($_.Name -in $VariablesWeWant) { $param1[$_.Name] = $_.Value } }
 			"fetched details from $StoredParameters\$($Param1.name)-$ParametersFilename"
-		}
+            $VariablesWeWant| where {$_ -notin @('port','ProjectFolder','projectDescription')}|
+            foreach {
+            if ($param1.$_ -eq $null) {$Problems+="missing a value for $($_)"} }
+ 		}
         else
         {
         $Problems+="Could not find project file $StoredParameters\$($Param1.Name)-$ParametersFilename "

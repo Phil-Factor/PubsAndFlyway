@@ -30,7 +30,7 @@ if ($executablepath -eq '')
 if ([string]::IsNullOrEmpty($ExecutablePath)) { $ExecutablePath = $pwd }
 .("$executablepath\DatabaseBuildAndMigrateTasks.ps1")
 
-<# $DatabaseDetails=$DatabaseDetails = 
+<# $DatabaseDetails = 
     @{
     'name' ='TheNameToGiveThisDatabaseAndProject';
     'ProjectFolder' = 'MyPathToTheFlywayFolder\PubsFlywaySecondMigration';
@@ -85,7 +85,13 @@ if ($DatabaseDetails.Problems.Count -gt 0) #list out exert error and which task 
 	Foreach{ Write-warning "$($_.Key)---------"; $_.Value } |
 	foreach { write-warning $_ }
 }
-$DatabaseDetails.Warnings.CheckCodeInDatabase
+if ($DatabaseDetails.Warnings.Count -gt 0) #list out exert error and which task failed
+{
+	$DatabaseDetails.Warnings.GetEnumerator() |
+	Foreach{ Write-warning "$($_.Key)---------"; $_.Value } |
+	foreach { write-warning $_ }
+}
+
 if ($DatabaseDetails.Problems.Count -eq 0)
 { Flyway info  $DatabaseDetails.FlyWayArgs }
 $VerbosePreference=$pushVerbosity
