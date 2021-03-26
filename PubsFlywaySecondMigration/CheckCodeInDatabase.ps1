@@ -1,11 +1,12 @@
-﻿
+﻿$pushVerbosity=$VerbosePreference
+$VerbosePreference= 'continue'
 #create an alias for the commandline Flyway, 
 #Set-Alias Flyway  'MyPathTo\flyway.cmd' -Scope local
 #create an alias for the commandline Flyway, 
 Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.3.1\flyway.cmd' -Scope local
 
-if (!(test-path  ((Get-alias -Name Flyway ).definition) -PathType Leaf))
-   {Write-error "Sorry, but you need a path to the Flyway Commandline"}
+if (!(test-path  ((Get-alias -Name Flyway).definition) -PathType Leaf))
+{ Write-error "Sorry, but you need a path to the Flyway Commandline" }
 
 $MyProject = 'pubs' #Must fill in the name of the project. This determines where 
 #script artefacts are kept
@@ -15,16 +16,18 @@ script.
 First, find out where we were executed from. Each environment has a different way
 of doing it. It all depends how you execute it. If you just past this in, you'll
 have to make this the working directory #>
-try {
-$executablepath = [System.IO.Path]::GetDirectoryName($myInvocation.MyCommand.Definition) }
-catch{$executablepath = ''} #didn't like that so remove it
+try
+{
+	$executablepath = [System.IO.Path]::GetDirectoryName($myInvocation.MyCommand.Definition)
+}
+catch { $executablepath = '' } #didn't like that so remove it
 if ($executablepath -eq '')
 {
-    $executablepath = "$(If ($psISE) # null if at the commandline
-        { Split-Path -Path $psISE.CurrentFile.FullPath }
-        Else { $global:PSScriptRoot })"
+	$executablepath = "$(If ($psISE) # null if at the commandline
+		{ Split-Path -Path $psISE.CurrentFile.FullPath }
+		Else { $global:PSScriptRoot })"
 }
-if ([string]::IsNullOrEmpty($ExecutablePath)){$ExecutablePath=$pwd}
+if ([string]::IsNullOrEmpty($ExecutablePath)) { $ExecutablePath = $pwd }
 .("$executablepath\DatabaseBuildAndMigrateTasks.ps1")
 
 <# $DatabaseDetails=$DatabaseDetails = 
@@ -44,23 +47,45 @@ if ([string]::IsNullOrEmpty($ExecutablePath)){$ExecutablePath=$pwd}
      }
 
 #>
-$DatabaseDetails = @{
-	'name' = 'Arthur'; 'Project' = $MyProject;
-}
-$Invocations=@(
-$FetchOrSaveDetailsOfParameterSet, #save parameters so you can recall them later.
-$FetchAnyRequiredPasswords, #passwords are kept in an encrypte4d file in the user area
-$GetCurrentVersion, #get the current version so you can save the code report in the right place
-$CheckCodeInDatabase, #now look at all the code in the modues (Procs, functions and so on)
-$CheckCodeInMigrationFiles, #make sure we've done a code analysis on the files too
-$FormatTheBasicFlywayParameters #so we can use flyway
-)
-$Invocations|foreach{if ($DatabaseDetails.Problems.Count -eq 0)
-     { $WhatWasReturned+= $_.Invoke($DatabaseDetails)}
-     }
-if ($DatabaseDetails.Problems.Count -gt 0) #list out exert error and which task failed
-  {$DatabaseDetails.Problems.GetEnumerator()|Foreach{"$($_.Key)---------";$_.Value}|foreach {$_}
-  }
-$DatabaseDetails.Warnings.CheckCodeInDatabase
-	Flyway info  $DatabaseDetails.FlyWayArgs
+$pushVerbosity=$VerbosePreference
+$VerbosePreference= 'continue'
 
+$DatabaseDetails = @{
+	'name' = 'MyDatabase'; 'Project' = $MyProject;
+}
+$Invocations = @(
+	$FetchOrSaveDetailsOfParameterSet, #save parameters so you can recall them later.
+	$FetchAnyRequiredPasswords, #passwords are kept in an encrypte4d file in the user area
+	$GetCurrentVersion, #get the current version so you can save the code report in the right place
+	$CheckCodeInDatabase, #now look at all the code in the modues (Procs, functions and so on)
+	$CheckCodeInMigrationFiles, #make sure we've done a code analysis on the files too
+	$FormatTheBasicFlywayParameters #so we can use flyway
+)
+$Invocations | foreach{
+	if ($DatabaseDetails.Problems.Count -eq 0)
+	{
+		if ($_.Ast.Extent.Text -imatch '(?<=# ?\$)([\w]{5,80})')
+		{ $TaskName = $matches[0] }
+		else { $TaskName = 'unknown' }
+		try # try executing the script block
+		{ $WhatWasReturned += $_.Invoke($DatabaseDetails) }
+		catch #if it hit an exception
+		{ # handle the exception
+			$ErrorMessage = $_.Exception.Message
+			$FailedItem = $_.Exception.ItemName
+            $TheFailure=$_
+			Write-Verbose "For some reason $Taskname failed. $FailedItem : $ErrorMessage"
+		}
+        write-verbose "Executed $TaskName"
+	}
+}
+if ($DatabaseDetails.Problems.Count -gt 0) #list out exert error and which task failed
+{
+	$DatabaseDetails.Problems.GetEnumerator() |
+	Foreach{ Write-warning "$($_.Key)---------"; $_.Value } |
+	foreach { write-warning $_ }
+}
+$DatabaseDetails.Warnings.CheckCodeInDatabase
+if ($DatabaseDetails.Problems.Count -eq 0)
+{ Flyway info  $DatabaseDetails.FlyWayArgs }
+$VerbosePreference=$pushVerbosity

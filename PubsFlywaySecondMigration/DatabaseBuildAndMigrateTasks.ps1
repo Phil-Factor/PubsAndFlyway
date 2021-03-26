@@ -59,8 +59,6 @@ in the Scripts folder, as a subfolder for the supplied version, so it needs
 $GetCurrentVersion to have been run beforehand in the chain of tasks.
 #>
 
-
-
 <# This scriptblock adds escaped values of server, database and project. 
 it allows you to save and load the shared parameters for all these 
 scriptblocks under a name you give it. you'd choose a different name for each database
@@ -69,9 +67,11 @@ If the parameters have the name defined but vital stuff missing, it fills
 in from the last remembered version. If it has the name and the vital stuff then it assumes
 you want to save it. If no name then it ignores. 
 #>
+
 $FetchOrSaveDetailsOfParameterSet = {
 	Param ($param1) # $FetchOrSaveDetailsOfParameterSet: the parameter is a hashtable
-	if ($Param1.name -ne $null -and $Param1.project -ne $null)
+    $problems=@(); 
+   	if ($Param1.name -ne $null -and $Param1.project -ne $null)
 	{
 		# define where we store our secret project details
 		$StoredParameters = "$($env:USERPROFILE)\Documents\Deploy\$(($param1.Project).Split([IO.Path]::GetInvalidFileNameChars()) -join '_')";
@@ -97,6 +97,10 @@ $FetchOrSaveDetailsOfParameterSet = {
 			Foreach { if ($_.Name -in $VariablesWeWant) { $param1[$_.Name] = $_.Value } }
 			"fetched details from $StoredParameters\$($Param1.name)-$ParametersFilename"
 		}
+        else
+        {
+        $Problems+="Could not find project file $StoredParameters\$($Param1.Name)-$ParametersFilename "
+        }
 	}
 	#if the user wants to save or resave they'll the name AND include both the the server and database
 	elseif ($Param1.Name -ne $null -and $Param1.Server -ne $null -and $Param1.Database -ne $null)
@@ -124,6 +128,10 @@ $FetchOrSaveDetailsOfParameterSet = {
       # has it been checked against a source directory?
 	$Param1.'Problems' = @{ };
 	$Param1.'Warnings' = @{ };
+@('server', 'database', 'projectFolder','project')|
+    foreach{ if ($param1.$_ -eq $null) { $Problems+= "no value for '$($_)'" } }
+if ($problems.Count -gt 0)
+    {$Param1.Problems.'FetchOrSaveDetailsOfParameterSet' += $problems;}
 }
 
 <# now we format the Flyway parameters #>
@@ -168,7 +176,7 @@ if not we ask for it and store it encrypted in the user area
 
 $FetchAnyRequiredPasswords = {
 	Param ($param1) # $FetchAnyRequiredPasswords the parameter is hashtable
-    $problem=@()
+    $problems=@()
     @('server') |
 	foreach{ if ($param1.$_ -eq $null) { $problem="no value for '$($_)'" } }
 	# some values, especially server names, have to be escaped when used in file paths.
@@ -433,7 +441,7 @@ $GetCurrentVersion = {
 	$Problems = @();
 	#is that alias correct?
 	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
-	{ $Problems += 'The alias for Codeguard is not set correctly yet' }	$Version = 'unknown'
+	{ $Problems += 'The alias for SQLCMD is not set correctly yet' }	$Version = 'unknown'
 	$query = 'SELECT [version] FROM dbo.flyway_schema_history where success=1'
 	$login = if ($param1.uid -ne $null)
 	{
