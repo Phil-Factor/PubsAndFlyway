@@ -57,7 +57,14 @@ $CreateBuildScriptIfNecessary:
 produces a build script from the database, using SQL Compare. It saves the build script
 in the Scripts folder, as a subfolder for the supplied version, so it needs
 $GetCurrentVersion to have been run beforehand in the chain of tasks.
-#>
+
+$ExecuteTableSmellReport
+This scriptblock executes SQL that produces a report in XML or JSON from the database
+that alerts you to tables that may have issues
+ 
+ #>
+
+
 
 <# This scriptblock adds escaped values of server, database and project. 
 it allows you to save and load the shared parameters for all these 
@@ -69,13 +76,14 @@ you want to save it. If no name then it ignores.
 #>
 
 $FetchOrSaveDetailsOfParameterSet = {
-	Param ($param1) # $FetchOrSaveDetailsOfParameterSet: the parameter is a hashtable
-    $problems=@(); 
-   	if ($Param1.name -ne $null -and $Param1.project -ne $null)
+	Param ($param1) # $FetchOrSaveDetailsOfParameterSet: (Don't delete this)
+	$problems = @();
+	if ($Param1.name -ne $null -and $Param1.project -ne $null)
 	{
 		# define where we store our secret project details
 		$StoredParameters = "$($env:USERPROFILE)\Documents\Deploy\$(($param1.Project).Split([IO.Path]::GetInvalidFileNameChars()) -join '_')";
 		$ParametersFilename = 'AllParameters.json';
+		$TheLocation = "$StoredParameters\$($Param1.Name)-$ParametersFilename"
 	}
 	
 	if ($Param1.name -ne $null -and $Param1.project -ne $null -and $Param1.Server -eq $null -and $Param1.Database -eq $null)
@@ -89,21 +97,23 @@ $FetchOrSaveDetailsOfParameterSet = {
 		if (!(test-path -Path $StoredParameters -PathType Container))
 		{ $null = New-Item -Path $StoredParameters -ItemType "directory" -Force }
 		#if the file already exists then read it in.
-		if (test-path "$StoredParameters\$($Param1.Name)-$ParametersFilename" -PathType leaf)
+		
+		if (test-path $TheLocation -PathType leaf)
 		{
 			# so we read in all the details
-			$TheActualParameters = Get-Content -Path "$StoredParameters\$($Param1.Name)-$ParametersFilename" -Raw | ConvertFrom-json
+			$TheActualParameters = Get-Content -Path $TheLocation -Raw | ConvertFrom-json
 			$TheActualParameters.psobject.properties |
 			Foreach { if ($_.Name -in $VariablesWeWant) { $param1[$_.Name] = $_.Value } }
-			"fetched details from $StoredParameters\$($Param1.name)-$ParametersFilename"
-            $VariablesWeWant| where {$_ -notin @('port','ProjectFolder','projectDescription')}|
-            foreach {
-            if ($param1.$_ -eq $null) {$Problems+="missing a value for $($_)"} }
- 		}
-        else
-        {
-        $Problems+="Could not find project file $StoredParameters\$($Param1.Name)-$ParametersFilename "
-        }
+			write-verbose "fetched details from $TheLocation"
+			$VariablesWeWant | where { $_ -notin @('port', 'ProjectFolder', 'projectDescription') } |
+			foreach {
+				if ($param1.$_ -eq $null) { $Problems += "missing a value for $($_)" }
+			}
+		}
+		else
+		{
+			$Problems += "Could not find project file $TheLocation"
+		}
 	}
 	#if the user wants to save or resave they'll the name AND include both the the server and database
 	elseif ($Param1.Name -ne $null -and $Param1.Server -ne $null -and $Param1.Database -ne $null)
@@ -111,11 +121,11 @@ $FetchOrSaveDetailsOfParameterSet = {
 		$RememberedHashTable = @{ }
 		$VariablesWeWant | foreach{ $RememberedHashTable.$_ = $param1.$_ }
 		$RememberedHashTable | ConvertTo-json |
-		out-file -FilePath "$StoredParameters\$($Param1.name)-$ParametersFilename" -Force
-		"Saved details to $StoredParameters\$($Param1.name)-$ParametersFilename"
+		out-file -FilePath $TheLocation -Force
+		"Saved details to $TheLocation"
 	}
-    # This section is to check for values that really should be there and if
-    # necessary, insert them.
+	# This section is to check for values that really should be there and if
+	# necessary, insert them.
 	# some values, especially server names, have to be escaped when used in file paths.
 	if ($Param1.'Escapedserver' -eq $null)
 	{
@@ -127,28 +137,33 @@ $FetchOrSaveDetailsOfParameterSet = {
 		}
 		$EscapedValues | foreach{ $_.GetEnumerator() } | foreach{ $param1[$_.Name] = $_.Value }
 	}
-    if ($Param1.'Checked' -eq $null) {$Param1.'Checked' = $false;} 
-      # has it been checked against a source directory?
+	if ($Param1.'Checked' -eq $null) { $Param1.'Checked' = $false; }
+	# has it been checked against a source directory?
 	$Param1.'Problems' = @{ };
 	$Param1.'Warnings' = @{ };
-@('server', 'database', 'projectFolder','project')|
-    foreach{ if ($param1.$_ -eq $null) { $Problems+= "no value for '$($_)'" } }
-if ($problems.Count -gt 0)
-    {$Param1.Problems.'FetchOrSaveDetailsOfParameterSet' += $problems;}
+	$Param1.'Locations' = @{ };
+	@('server', 'database', 'project') |
+	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
+	if ($TheLocation -ne $null)
+	{ $Param1.Locations.'FetchOrSaveDetailsOfParameterSet' += $TheLocation; }
+	if ($problems.Count -gt 0)
+	{ $Param1.Problems.'FetchOrSaveDetailsOfParameterSet' += $problems; }
 }
 
 <# now we format the Flyway parameters #>
 #>
 
 $FormatTheBasicFlywayParameters = {
-	Param ($param1) # $FormatTheBasicFlywayParameters the parameter is hashtable
+	Param ($param1) # $FormatTheBasicFlywayParameters (Don't delete this)
+	$problems = @();
 	@('server', 'database', 'projectFolder') |
-	foreach{ if ($param1.$_ -eq $null) { "no value for '$($_)'" } }
+	foreach{ if ($param1.$_ -eq $null) { $problems += "no value for '$($_)'" } }
 	
 	$MaybePort = "$(if ([string]::IsNullOrEmpty($param1.port)) { '' }
 		else { ":$($param1.port)" })"
 	if (!([string]::IsNullOrEmpty($param1.uid)))
 	{
+		if ($params1.pwd -eq $null) { $problems += "no password provided for $($($param1.uid))" }
 		$FlyWayArgs =
 		@("-url=jdbc:sqlserver://$($param1.Server)$maybePort;databaseName=$($param1.Database)",
 			"-locations=filesystem:$ProjectFolder\Scripts", <# the migration folder #>
@@ -169,6 +184,10 @@ $FormatTheBasicFlywayParameters = {
 		"-placeholders.projectName=$($param1.Project)",
 		"-community") <# Change this if using teams!! #>
 	$Param1.FlywayArgs = $FlyWayArgs
+	if ($problems.Count -gt 0)
+	{
+		$Param1.Problems.'FormatTheBasicFlywayParameters' += $problems;
+	}
 }
 
 
@@ -178,10 +197,10 @@ if not we ask for it and store it encrypted in the user area
  #>
 
 $FetchAnyRequiredPasswords = {
-	Param ($param1) # $FetchAnyRequiredPasswords the parameter is hashtable
-    $problems=@()
-    @('server') |
-	foreach{ if ($param1.$_ -eq $null) { $problem="no value for '$($_)'" } }
+	Param ($param1) # $FetchAnyRequiredPasswords (Don't delete this)
+	$problems = @()
+	@('server') |
+	foreach{ if ($param1.$_ -eq $null) { $problem = "no value for '$($_)'" } }
 	# some values, especially server names, have to be escaped when used in file paths.
 	if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
 	{
@@ -214,7 +233,7 @@ $FetchAnyRequiredPasswords = {
 		$param1.Uid = $SqlCredentials.UserName;
 		$param1.Pwd = $SqlCredentials.GetNetworkCredential().password
 	}
-    if ($problems.Count -gt 0)
+	if ($problems.Count -gt 0)
 	{
 		$Param1.Problems.'FetchAnyRequiredPasswords' += $problems;
 	}
@@ -237,7 +256,7 @@ $CheckCodeInDatabase.Invoke($OurDetails)
 $OurDetails.warnings.CheckCodeInDatabase
  #>
 $CheckCodeInDatabase = {
-	Param ($param1) # $CheckCodeInDatabase - the parameter is a hashtable
+	Param ($param1) # $CheckCodeInDatabase - (Don't delete this)
 	#you must set this value correctly before starting.
 	Set-Alias CodeGuard "${env:ProgramFiles(x86)}\SQLCodeGuard\SqlCodeGuard30.Cmd.exe" -Scope local
 	$Problems = @(); #our local problem counter
@@ -302,7 +321,7 @@ $CheckCodeInDatabase = {
 			<#report a problem and send back the args for diagnosis 
             (hint, only for script development) #>
 			$Args = '';
-			$Args += $Arguments.GetEnumerator() |
+			$Args += $Arguments |
 			foreach{ "$($_.Name)=$($_.Value)" }
 			$problems += "CodeGuard responded '$result' with error code $LASTEXITCODE when used with parameters $Args."
 		}
@@ -327,6 +346,11 @@ $CheckCodeInDatabase = {
 					  code, line, text
 		$Param1.Warnings.'CheckCodeInDatabase' += $warnings
 	}
+	if ($problems.Count -eq 0)
+	{ 
+    $Param1.Locations.'CheckCodeInDatabase' += "$MyDatabasePath\codeAnalysis.xml";
+     }
+	
 }
 
 
@@ -351,7 +375,7 @@ $param1=$details
 $CheckCodeInMigrationFiles.Invoke($Details) #>
 
 $CheckCodeInMigrationFiles = {
-	Param ($param1) # $CheckCodeInMigrationFiles - the parameter is a hashtable
+	Param ($param1) # $CheckCodeInMigrationFiles - (Don't delete this)
 	#you must set this value correctly before starting.
 	Set-Alias CodeGuard "${env:ProgramFiles(x86)}\SQLCodeGuard\SqlCodeGuard30.Cmd.exe" -Scope local
 	$Problems = @(); #our local problem counter
@@ -371,57 +395,61 @@ $CheckCodeInMigrationFiles = {
 		$EscapedValues | foreach{ $param1 += $_ }
 	}
 	#check that all the values we need are in the hashtable
-	@('EscapedProject','ProjectFolder') |
+	@('EscapedProject', 'ProjectFolder') |
 	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
-    dir "$($param1.projectFolder)/scripts/V*.sql" | foreach{
-	    $Thepath = $_.FullName;
-	    $TheFile = $_.Name
-	    $Theversion = ($_.Name -replace 'V(?<Version>[.\d]+).+', '${Version}')
-	    #now we create the parameters for CodeGuard.
-	    $MyDatabasePath = "$($env:USERPROFILE)\Documents\GitHub\$(
-		    $param1.EscapedProject)\$TheVersion\Reports"
-	    $Arguments = @{
-		    source = $ThePath
-		    outfile = "$MyDatabasePath\FilecodeAnalysis.xml" <#
+	dir "$($param1.projectFolder)/scripts/V*.sql" | foreach{
+		$Thepath = $_.FullName;
+		$TheFile = $_.Name
+		$Theversion = ($_.Name -replace 'V(?<Version>[.\d]+).+', '${Version}')
+		#now we create the parameters for CodeGuard.
+		$MyDatabasePath = "$($env:USERPROFILE)\Documents\GitHub\$(
+			$param1.EscapedProject)\$TheVersion\Reports"
+		$Arguments = @{
+			source = $ThePath
+			outfile = "$MyDatabasePath\FilecodeAnalysis.xml" <#
             The file name in which to store the analysis xml report#>
-		    #exclude='BP007;DEP004;ST001' 
-		    #A semicolon separated list of rule codes to exclude
-		    include = 'all' #A semicolon separated list of rule codes to include
-	    }
-	    # we need to make sure tha path is there
-	    if (-not (Test-Path -PathType Container $MyDatabasePath))
-	    {
-		    # does the path to the reports directory exist?
-		    # not there, so we create the directory 
-		    $null = New-Item -ItemType Directory -Force $MyDatabasePath;
-	    }
+			#exclude='BP007;DEP004;ST001' 
+			#A semicolon separated list of rule codes to exclude
+			include = 'all' #A semicolon separated list of rule codes to include
+		}
+		# we need to make sure tha path is there
+		if (-not (Test-Path -PathType Container $MyDatabasePath))
+		{
+			# does the path to the reports directory exist?
+			# not there, so we create the directory 
+			$null = New-Item -ItemType Directory -Force $MyDatabasePath;
+		}
 	    <# we only do the analysis if it hasn't already been done for this version,
         and we've hit no problems #>
-	    if (($problems.Count -eq 0) -and (-not (
-				    Test-Path -PathType leaf  "$MyDatabasePath\FilecodeAnalysis.xml")))
-	    {
-		    $result = codeguard @Arguments; #execute the command-line Codeguard.
-		    if ($? -or $LASTEXITCODE -eq 1)
-		    {
-			    "Written file Code analysis for $TheFile for $($param1.Project) project) to $MyDatabasePath\FilecodeAnalysis.xml"
-		    }
-		    else
-		    {
+		if (($problems.Count -eq 0) -and (-not (
+					Test-Path -PathType leaf  "$MyDatabasePath\FilecodeAnalysis.xml")))
+		{
+			$result = codeguard @Arguments; #execute the command-line Codeguard.
+			if ($? -or $LASTEXITCODE -eq 1)
+			{
+				Write-Verbose  "Written file Code analysis for $TheFile for $($param1.Project) project) to $MyDatabasePath\FilecodeAnalysis.xml"
+			}
+			else
+			{
 			    <#report a problem and send back the args for diagnosis 
                 (hint, only for script development) #>
-			    $Args = '';
-			    $Args += $Arguments.GetEnumerator() |
-			    foreach{ "$($_.Name)=$($_.Value)" }
-			    $problems += "CodeGuard responded '$result' with error code $LASTEXITCODE when used with parameters $Args."
-		    }
-		    $Problems += $result | where { $_ -like '*error*' }
-	    }
-    }
+				$Args = '';
+				$Args += $Arguments.GetEnumerator() |
+				foreach{ "$($_.Name)=$($_.Value)" }
+				$problems += "CodeGuard responded '$result' with error code $LASTEXITCODE when used with parameters $Args."
+			}
+			$Problems += $result | where { $_ -like '*error*' }
+		}
+	}
 	if ($problems.Count -gt 0)
 	{
 		Write-warning "Problem '$problems' with CheckCodeInMigrationFiles! ";
 		$Param1.Problems.'CheckCodeInMigrationFiles' += $problems;
 	}
+	else
+	{ $Param1.Locations.'CheckCodeInMigrationFiles' += "$MyDatabasePath\FilecodeAnalysis.xml"; }
+	
+	
 }
 
 
@@ -484,7 +512,7 @@ with a list of objects that have changed. if the comparison returns $null, then 
 has been an error #>
 
 $IsDatabaseIdenticalToSource = {
-	Param ($param1) # $IsDatabaseIdenticalToSource the parameter is a hashtable
+	Param ($param1) # $IsDatabaseIdenticalToSource (Don't delete this)
 	$problems = @();
 	$warnings = @();
 	@('version', 'server', 'database', 'project') |
@@ -618,7 +646,7 @@ $CreateScriptFoldersIfNecessary = {
 <# a script block that produces a build script from a database, using SQL Compare. #>
 
 $CreateBuildScriptIfNecessary = {
-	Param ($param1) # $CreateBuildScriptIfNecessary the parameter is hashtable 
+	Param ($param1) # $CreateBuildScriptIfNecessary (Don't delete this) 
 	$problems = @();
 	@('version', 'server', 'database', 'project') |
 	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
@@ -681,5 +709,323 @@ $CreateBuildScriptIfNecessary = {
 	else { "This version '$($param1.Version)' already has a build script at $MyDatabasePath " }
 	
 }
-'scriptblocks loaded'
+<#This scriptblock executes SQL that produces a report in XML or JSON from the database
+#>
+
+$ExecuteTableSmellReport = {
+	Param ($param1) # $ExecuteTableSmellReport - parameter is a hashtable 
+	$problems = @()
+	@('server', 'database', 'version', 'project') | foreach{
+		if ($param1.$_ -eq $null)
+		{ write-error "no value for '$($_)'" }
+	}
+	if ($param1.EscapedProject -eq $null) #check that escapedValues are in place
+	{
+		$EscapedValues = $param1.GetEnumerator() |
+		where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
+			@{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+		}
+		$EscapedValues | foreach{ $param1 += $_ }
+	}
+	$MyDatabasePath = "$($env:USERPROFILE)\Documents\GitHub\$(
+		$param1.EscapedProject)\$($param1.Version)\Reports"
+	if (-not (Test-Path -PathType Container $MyDatabasePath))
+	{
+		# does the path to the reports directory exist?
+		# not there, so we create the directory 
+		$null = New-Item -ItemType Directory -Force $MyDatabasePath;
+	}
+	$MyOutputReport = "$MyDatabasePath\TableIssues.JSON"
+	#the alias must be set to the path of your installed version of SQL Compare
+	Set-Alias SQLCmd   "$($env:ProgramFiles)\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\sqlcmd.exe" -Scope local
+	#is that alias correct?
+	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
+	{ $Problems += 'The alias for SQLCMD is not set correctly yet' }
+	$query = @'
+SET NOCOUNT ON
+/**
+summary:   >
+ This query finds the following table smells
+ 1/ is a Wide table (set this to what you consider to be wide)
+ 2/ is a Heap
+ 3/ is an undocumented table
+ 4/ Has no Primary Key
+ 5/ Has ANSI NULLs set to OFF
+ 6/ Has no index at all
+ 7/ No candidate key (unique constraint on column(s))
+ 8/ Has disabled Index(es)
+ 9/ has leftover fake index(es)
+10/ has a column collation different from the database
+11/ Has a surprisingly low Fill-Factor
+12/ Has disabled constraint(s)'
+13/ Has untrusted constraint(s)'
+14/ Has a disabled Foreign Key'
+15/ Has untrusted FK'
+16/ Has unrelated to any other table'
+17/ Has a deprecated LOB datatype
+18/ Has unintelligible column names'
+19/ Has a foreign key that has no index'
+20/ Has a GUID in a clustered Index
+21/ Has non-compliant column names'
+22/ Has a trigger that has'nt got NOCOUNT ON'
+23/ Is not referenced by any procedure, view or function'
+24/ Has  a disabled trigger' 
+25/ Can't be indexed'
+Revisions:
+ - Author: Phil Factor
+   Version: 1.1
+   Modifications:
+	-  added tests as suggested by comments to blog
+   Date: 30 Mar 2016
+ - Author: Phil Factor
+   Version: 1.2
+   Modifications:
+	-  tidying, added five more smells
+   Date: 10 July 2020
+ - Author: Phil Factor
+   Version: 1.3
+   Modifications:
+	-  re-engineered it for JSON output
+   Date: 26 March 2021
+ 
+ returns:   >
+ single result of table name, and list of problems        
+**/
+declare  @TableSmells table (object_id INT, problem VARCHAR(200)) 
+INSERT INTO @TableSmells (object_id, problem)
+ SELECT object_id, 'wide (more than 15 columns)' AS Problem
+          FROM sys.tables /* see whether the table has more than 15 columns */
+          WHERE max_column_id_used > 15
+        UNION ALL
+        SELECT DISTINCT sys.tables.object_id, 'heap'
+          FROM sys.indexes /* see whether the table is a heap */
+            INNER JOIN sys.tables
+              ON sys.tables.object_id = sys.indexes.object_id
+          WHERE sys.indexes.type = 0
+        UNION ALL
+        SELECT s.object_id, 'Undocumented table'
+          FROM sys.tables AS s /* it has no extended properties */
+            LEFT OUTER JOIN sys.extended_properties AS ep
+              ON s.object_id = ep.major_id AND minor_id = 0
+          WHERE ep.value IS NULL
+        UNION ALL
+        SELECT sys.tables.object_id, 'No primary key'
+          FROM sys.tables /* see whether the table has a primary key */
+          WHERE ObjectProperty(object_id, 'TableHasPrimaryKey') = 0
+        UNION ALL
+        SELECT sys.tables.object_id, 'has ANSI NULLs set to OFF'
+          FROM sys.tables /* see whether the table has ansii NULLs off*/
+          WHERE ObjectPropertyEx(object_id, 'IsAnsiNullsOn') = 0
+       UNION ALL
+        SELECT sys.tables.object_id, 'No index at all'
+          FROM sys.tables /* see whether the table has any index */
+          WHERE ObjectProperty(object_id, 'TableHasIndex') = 0
+        UNION ALL
+        SELECT sys.tables.object_id, 'No candidate key'
+          FROM sys.tables /* if no unique constraint then it isn't relational */
+          WHERE ObjectProperty(object_id, 'TableHasUniqueCnst') = 0
+            AND ObjectProperty(object_id, 'TableHasPrimaryKey') = 0
+        UNION ALL
+        SELECT DISTINCT object_id, 'disabled Index(es)'
+          FROM sys.indexes /* don't leave these lying around */
+          WHERE is_disabled = 1
+        UNION ALL
+        SELECT DISTINCT object_id, 'leftover fake index(es)'
+          FROM sys.indexes /* don't leave these lying around */
+          WHERE is_hypothetical = 1
+        UNION ALL
+        SELECT c.object_id,
+          'has a column ''' + c.name + ''' that has a collation '''
+          + collation_name + ''' different from the database'
+          FROM sys.columns AS c
+          WHERE Coalesce(collation_name, '') 
+		  <> DatabasePropertyEx(Db_Id(), 'Collation')
+        UNION ALL
+        SELECT DISTINCT object_id, 'surprisingly low Fill-Factor'
+          FROM sys.indexes /* a fill factor of less than 80 raises eyebrows */
+          WHERE fill_factor <> 0
+            AND fill_factor < 80
+            AND is_disabled = 0
+            AND is_hypothetical = 0
+        UNION ALL
+        SELECT DISTINCT parent_object_id, 'disabled constraint(s)'
+          FROM sys.check_constraints /* hmm. i wonder why */
+          WHERE is_disabled = 1
+        UNION ALL
+        SELECT DISTINCT parent_object_id, 'untrusted constraint(s)'
+          FROM sys.check_constraints /* ETL gone bad? */
+          WHERE is_not_trusted = 1
+        UNION ALL
+        SELECT DISTINCT parent_object_id, 'disabled FK'
+          FROM sys.foreign_keys /* build script gone bad? */
+          WHERE is_disabled = 1
+        UNION ALL
+        SELECT DISTINCT parent_object_id, 'untrusted FK'
+          FROM sys.foreign_keys /* Why do you have untrusted FKs?       
+      Constraint was enabled without checking existing rows;
+      therefore, the constraint may not hold for all rows. */
+          WHERE is_not_trusted = 1
+        UNION ALL
+        SELECT object_id, 'unrelated to any other table'
+          FROM sys.tables /* found a simpler way! */
+          WHERE ObjectPropertyEx(object_id, 'TableHasForeignKey') = 0
+            AND ObjectPropertyEx(object_id, 'TableHasForeignRef') = 0
+        UNION ALL
+        SELECT object_id, 'deprecated LOB datatype'
+          FROM sys.tables /* found a simpler way! */
+          WHERE ObjectPropertyEx(object_id, 'TableHasTextImage') = 1 
+       UNION ALL
+        SELECT DISTINCT object_id, 'unintelligible column names'
+          FROM sys.columns /* column names with no letters in them */
+          WHERE name COLLATE Latin1_General_CI_AI NOT LIKE '%[A-Z]%' COLLATE Latin1_General_CI_AI
+        UNION ALL
+        SELECT keys.parent_object_id,
+          'foreign key ' + keys.name + ' that has no supporting index'
+          FROM sys.foreign_keys AS keys
+            INNER JOIN sys.foreign_key_columns AS TheColumns
+              ON keys.object_id = constraint_object_id
+            LEFT OUTER JOIN sys.index_columns AS ic
+              ON ic.object_id = TheColumns.parent_object_id
+             AND ic.column_id = TheColumns.parent_column_id
+             AND TheColumns.constraint_column_id = ic.key_ordinal
+          WHERE ic.object_id IS NULL
+        UNION ALL
+        SELECT Ic.object_id, Col_Name(Ic.object_id, Ic.column_id)
+          + ' is a GUID in a clustered index' /* GUID in a clustered IX */
+          FROM sys.index_columns AS Ic
+			INNER JOIN sys.tables AS tables
+			ON tables.object_id = Ic.object_id
+            INNER JOIN sys.columns AS c
+              ON c.object_id = Ic.object_id AND c.column_id = Ic.column_id
+            INNER JOIN sys.types AS t
+              ON t.system_type_id = c.system_type_id
+            INNER JOIN sys.indexes AS i
+              ON i.object_id = Ic.object_id AND i.index_id = Ic.index_id
+          WHERE t.name = 'uniqueidentifier'
+            AND i.type_desc = 'CLUSTERED'
+        UNION ALL
+        SELECT DISTINCT object_id, 'non-compliant column names'
+          FROM sys.columns /* column names that need delimiters*/
+          WHERE name COLLATE Latin1_General_CI_AI LIKE '%[^_@$#A-Z0-9]%' COLLATE Latin1_General_CI_AI
+        UNION ALL /* Triggers lacking `SET NOCOUNT ON`, which can cause unexpected results WHEN USING OUTPUT */
+        SELECT ta.object_id,
+          'This table''s trigger, ' + Object_Name(tr.object_id)
+          + ', has''nt got NOCOUNT ON'
+          FROM sys.tables AS ta /* see whether the table has any index */
+            INNER JOIN sys.triggers AS tr
+              ON tr.parent_id = ta.object_id
+            INNER JOIN sys.sql_modules AS mo
+              ON tr.object_id = mo.object_id
+          WHERE definition NOT LIKE '%set nocount on%'
+        UNION ALL /* table not referenced by any routine */
+        SELECT sys.tables.object_id,
+          'not referenced by procedure, view or function'
+          FROM sys.tables /* found a simpler way! */
+            LEFT OUTER JOIN sys.sql_expression_dependencies
+              ON referenced_id = sys.tables.object_id
+          WHERE referenced_id IS NULL
+        UNION ALL
+        SELECT DISTINCT parent_id, 'has a disabled trigger'
+          FROM sys.triggers
+          WHERE is_disabled = 1 AND parent_id > 0
+        UNION ALL
+        SELECT sys.tables.object_id, 'can''t be indexed'
+          FROM sys.tables /* see whether the table has a primary key */
+          WHERE ObjectProperty(object_id, 'IsIndexable') = 0
+DECLARE @json NVARCHAR(MAX)
+SELECT @json = (SELECT TableName, problem from
+	(SELECT DISTINCT  Object_Schema_Name(Object_ID) + '.' + Object_Name(Object_ID) AS TableName,object_id, Count(*) AS smells
+FROM @TableSmells GROUP BY Object_ID)f(TableName,Object_id, Smells)
+INNER JOIN @TableSmells AS problems ON f.object_id=problems.object_id
+ORDER BY smells desc
+FOR JSON AUTO)
+SELECT @Json
+'@
+	
+	if (!([string]::IsNullOrEmpty($param1.uid)) -and ([string]::IsNullOrEmpty($param1.pwd)))
+	{ $problems += 'No password is specified' }
+	If (!(Test-Path -PathType Leaf  $MyOutputReport) -and ($problems.Count -eq 0))
+	{
+		if (!([string]::IsNullOrEmpty($param1.uid)))
+		{
+			$MyJSON = sqlcmd -S "$($param1.server)" -d "$($param1.database)" `
+							 -Q `"$query`" -U $($param1.uid) -P $($param1.pwd) -o $MyOutputReport -u -y0
+			$arguments = "$($param1.server) -d $($param1.database) -U $($param1.uid) -P $($param1.pwd) -o $MyOutputReport"
+		}
+		else
+		{
+			$MyJSON = sqlcmd -S "$($param1.server)" -d "$($param1.database)" -Q `"$query`" -E -o $MyOutputReport -u -y0
+			$arguments = "$($param1.server) -d $($param1.database) -o $MyOutputReport"
+		}
+		if (!($?))
+		{
+			#report a problem and send back the args for diagnosis (hint, only for script development)
+			$Problems += "sqlcmd failed with code $LASTEXITCODE, $Myversions, with parameters $arguments"
+		}
+		$possibleError = Get-Content -Path $MyOutputReport -raw
+		if ($PossibleError -like '*Sqlcmd: Error*')
+		{
+			$Problems += $possibleError;
+			Remove-Item $MyOutputReport;
+		}
+		
+	}
+	if ($problems.Count -gt 0)
+	{
+		$Param1.Problems.'ExecuteTableSmellReport' += $problems;
+	}
+	else
+	{
+		$Param1.Locations.'ExecuteTableSmellReport' += $MyOutputReport;
+	}
+}
+
+function Process-FlywayTasks
+{
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory = $true, 
+				   Position = 1)]
+		[System.Collections.Hashtable]$DatabaseDetails,
+		[Parameter(Mandatory = $true,
+				   Position = 2)]
+		[array]$Invocations
+	)
+	
+	$Invocations | foreach{
+		if ($DatabaseDetails.Problems.Count -eq 0)
+		{
+			if ($_.Ast.Extent.Text -imatch '(?<=# ?\$)([\w]{5,80})')
+			{ $TaskName = $matches[0] }
+			else { $TaskName = 'unknown' }
+			try # try executing the script block
+			{ $WhatWasReturned += $_.Invoke($DatabaseDetails) }
+			catch #if it hit an exception
+			{
+				# handle the exception
+				$ErrorMessage = $_.Exception.Message
+				$FailedItem = $_.Exception.ItemName
+				$DatabaseDetails.Problems.exceptions += "$Taskname failed. $FailedItem : $ErrorMessage"
+			}
+			write-verbose "Executed $TaskName"
+		}
+		
+	}
+	#print out any errors and warnings. 
+	if ($DatabaseDetails.Problems.Count -gt 0) #list out every problem and which task failed
+	{
+		$DatabaseDetails.Problems.GetEnumerator() |
+		Foreach{ Write-warning "Problem! $($_.Key)---------"; $_.Value } |
+		foreach { write-warning "`t$_" }
+	}
+	if ($DatabaseDetails.Warnings.Count -gt 0) #list out exery warning and which task failed
+	{
+		$DatabaseDetails.Warning.GetEnumerator() |
+		Foreach{ Write-warning "$($_.Key)---------"; $_.Value } |
+		foreach { write-warning  "`t$_" }
+	}
+}
+
+'scriptblocks and cmdlet loaded'
 
