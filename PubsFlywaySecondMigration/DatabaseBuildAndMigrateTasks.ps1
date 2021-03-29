@@ -1004,9 +1004,10 @@ function Process-FlywayTasks
 			catch #if it hit an exception
 			{
 				# handle the exception
+                $where=$PSItem.InvocationInfo.ScriptLineNumber
 				$ErrorMessage = $_.Exception.Message
 				$FailedItem = $_.Exception.ItemName
-				$DatabaseDetails.Problems.exceptions += "$Taskname failed. $FailedItem : $ErrorMessage"
+				$DatabaseDetails.Problems.exceptions += "$Taskname failed on line $where. $FailedItem : $ErrorMessage"
 			}
 			write-verbose "Executed $TaskName"
 		}

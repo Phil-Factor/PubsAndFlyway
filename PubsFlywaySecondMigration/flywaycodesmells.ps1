@@ -44,7 +44,7 @@ $DatabaseDetails = @{
 #>
 #I've Already saved mine
 $DatabaseDetails = @{
-	'name' = 'MyDatabase'; 'Project' = 'pubs';
+	'name' = 'silly'; 'Project' = 'pubs';
 }
 
 <#You can then get the $databaseDetails array filled in by executing
