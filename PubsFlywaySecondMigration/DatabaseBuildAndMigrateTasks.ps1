@@ -1021,11 +1021,10 @@ function Process-FlywayTasks
 	}
 	if ($DatabaseDetails.Warnings.Count -gt 0) #list out exery warning and which task failed
 	{
-		$DatabaseDetails.Warning.GetEnumerator() |
+		$DatabaseDetails.Warnings.GetEnumerator() |
 		Foreach{ Write-warning "$($_.Key)---------"; $_.Value } |
 		foreach { write-warning  "`t$_" }
 	}
 }
 
 'scriptblocks and cmdlet loaded'
-
