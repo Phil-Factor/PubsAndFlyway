@@ -26,6 +26,7 @@ if ([string]::IsNullOrEmpty($ExecutablePath)) { $ExecutablePath = $pwd }
 <#
 # so we define our project-wide settings
 $DatabaseDetails = @{
+    'Name'='TheNameToGiveThisDatabaseAndProject';
     'ProjectFolder' = 'MyPathToTheFlywayFolder\PubsFlywaySecondMigration';
     'ProjectDescription'='A sample project to demonstrate Flyway, using the old Pubs database';
 	'pwd' = ''; #Always leave blank
@@ -43,7 +44,7 @@ $DatabaseDetails = @{
      }
 #>
 $DatabaseDetails=@{
-    'name' = 'Arthur';'Project' = $MyProject;}
+    'name' = 'TheNameToGiveThisDatabaseAndProject';'Project' = $MyProject;}
 
  <# just add, comment in, or comment out anything you want or not #>
 $Invocations = @(

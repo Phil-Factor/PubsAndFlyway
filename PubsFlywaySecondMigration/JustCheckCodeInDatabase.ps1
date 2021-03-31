@@ -33,41 +33,31 @@ if ($executablepath -eq '')
 if ([string]::IsNullOrEmpty($ExecutablePath)) { $ExecutablePath = $pwd }
 .("$executablepath\DatabaseBuildAndMigrateTasks.ps1")
 
-<# $DatabaseDetails = 
-    @{
-    'name' ='TheNameToGiveThisDatabaseAndProject';
-    'ProjectFolder' = 'MyPathToTheFlywayFolder\PubsFlywaySecondMigration';
-    'ProjectDescription'='However you describe your project';
-	'pwd' = ''; #Always leave blank
-	'uid' = 'MyUserName'; #leave blank unless you use credentials
-	'Database' = 'MyDatabase'; # fill this in please
-	'server' = 'MyServer'; # We need to know the server!
-	'port' = $null; #Not normally needed with SQL Server. add if required
-	#set to $null or leave it out if you want to let jdbc detect it 
-	'Project' = $MyProject; # the name of the project-needed for saving files
-	'Version' = ''; # current version of database - 
-	# leave blank unless you know
-     }
-#>
-$pushVerbosity=$VerbosePreference
-$VerbosePreference= 'continue'
 
-$DatabaseDetails = @{
-	'name' = 'MyDatabase'; 'Project' = $MyProject;
-}
+$pushVerbosity=$VerbosePreference# we will run this in verbose mode to try it out
+$VerbosePreference= 'continue'
 
 $Invocations = @(
 	$FetchOrSaveDetailsOfParameterSet, #save parameters so you can recall them later.
 	$FetchAnyRequiredPasswords, #passwords are kept in an encrypte4d file in the user area
 	$GetCurrentVersion, #get the current version so you can save the code report in the right place
-	$CheckCodeInDatabase, #now look at all the code in the modues (Procs, functions and so on)
-	$CheckCodeInMigrationFiles, #make sure we've done a code analysis on the files too
-	$FormatTheBasicFlywayParameters #so we can use flyway
+	$CheckCodeInDatabase #now look at all the code in the modues (Procs, functions and so on)
 )
 
-$DatabaseDetails.problems=@{}
-Process-FlywayTasks $DatabaseDetails $Invocations
+$OurDetails=@{
+  'server'='MyServer'; 
+  'Database'='MyDatabase'; 
+  'version'='MyVersion';
+  'project'='MyProjectName';
+  'uid'='MyuserID'; #if necessary!
+  'warnings'=@{};'problems'=@{}; 'Locations'=@{}
+  }
 
+
+Process-FlywayTasks $OurDetails $Invocations
+
+<# now we print out all the problems with the code reported by Codeguard because it is
+in XML format in the file #>
 if ($DatabaseDetails.Problems.Count -eq 0)
     {
     [xml]$XmlDocument = Get-Content -Path $DatabaseDetails.Locations.CheckCodeInDatabase
@@ -80,8 +70,6 @@ if ($DatabaseDetails.Problems.Count -eq 0)
 					  code, line, text
 		$warnings
 	}
-
-
-if ($DatabaseDetails.Problems.Count -eq 0)
-{ Flyway info  $DatabaseDetails.FlyWayArgs }
+#return to our previous verbosity
 $VerbosePreference=$pushVerbosity
+

@@ -29,9 +29,9 @@ designated project directory, in a Reports folder, as a subfolder for the suppli
 version (for example, in Pubs\1.1.5\Reports), so it needs $GetCurrentVersion to have
 been run beforehand in the chain of tasks.
 
-$CheckCodeInFiles
-This runs SQL code analysis on the scripted objects  within the migration files and
-saves the report and saves the reports in the designated project directory, in a
+$CheckCodeInMigrationFiles
+This, where necessary,  runs SQL code analysis on all the migration files in the folder and
+saves the report and saves the reports in the designated project directory, each one in a
 Reports folder, as a subfolder for the supplied version (for example, in Pubs\1.1.5\Reports).
 
 $IsDatabaseIdenticalToSource: 
