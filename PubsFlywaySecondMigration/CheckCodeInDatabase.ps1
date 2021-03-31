@@ -1,4 +1,7 @@
-﻿$pushVerbosity=$VerbosePreference
+﻿<# this script checks out the code of the current version of the database and 
+all the migration file. It lists all the problems in the current database.
+Then it runs Flyway Info task on the database #>
+$pushVerbosity=$VerbosePreference
 $VerbosePreference= 'continue'
 #create an alias for the commandline Flyway, 
 #Set-Alias Flyway  'MyPathTo\flyway.cmd' -Scope local
@@ -65,6 +68,20 @@ $Invocations = @(
 
 $DatabaseDetails.problems=@{}
 Process-FlywayTasks $DatabaseDetails $Invocations
+
+if ($DatabaseDetails.Problems.Count -eq 0)
+    {
+    [xml]$XmlDocument = Get-Content -Path $DatabaseDetails.Locations.CheckCodeInDatabase
+		$warnings = @();
+		$warnings += $XmlDocument.root.GetEnumerator() | foreach{
+			$name = $_.name.ToString();
+			$_.issue
+		} |
+		select-object  @{ Name = "Object"; Expression = { $name } },
+					  code, line, text
+		$warnings
+	}
+
 
 if ($DatabaseDetails.Problems.Count -eq 0)
 { Flyway info  $DatabaseDetails.FlyWayArgs }

@@ -1,4 +1,7 @@
-﻿function Join-PipelineStrings
+﻿<# This script runs the actions you specify on all the databases you specify, based on the existing
+flyway config files kept in a config file directory. You can override the global settings, flags and actions  in the
+config files.#>
+function Join-PipelineStrings
 {
 	[CmdletBinding()]
 	param

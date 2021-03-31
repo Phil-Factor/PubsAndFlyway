@@ -1,4 +1,6 @@
-﻿try
+﻿<# This script tell you the code smells in the current version of the database #>
+
+try
 {
 	$executablepath = [System.IO.Path]::GetDirectoryName($myInvocation.MyCommand.Definition)
 }
@@ -44,7 +46,7 @@ $DatabaseDetails = @{
 #>
 #I've Already saved mine
 $DatabaseDetails = @{
-	'name' = 'silly'; 'Project' = 'pubs';
+	'name' = 'MyDatabase'; 'Project' = 'pubs';
 }
 
 <#You can then get the $databaseDetails array filled in by executing
@@ -57,7 +59,7 @@ and the name of the flyway project.
  #>
 
 
-$DatabaseDetails.problems=@{}
+$DatabaseDetails.warnings=@{}
 Process-FlywayTasks $DatabaseDetails  @(
 $FetchOrSaveDetailsOfParameterSet, # get the details, initialise
 $FetchAnyRequiredPasswords, #deal with passwords
@@ -71,4 +73,5 @@ if ( $Report-ne $null)
          Select @{label="Table";expression={$table}},
           @{label="Problem";expression={$_.problem}}
     }
+
 

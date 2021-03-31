@@ -1,4 +1,6 @@
-﻿try
+﻿<# This script uses the task executer Process-FlywayTasks to do a table-smell report
+on the current version of the database #>
+try
 {
 	$executablepath = [System.IO.Path]::GetDirectoryName($myInvocation.MyCommand.Definition)
 }

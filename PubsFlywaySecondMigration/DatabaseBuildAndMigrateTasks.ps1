@@ -77,6 +77,9 @@ you want to save it. If no name then it ignores.
 
 $FetchOrSaveDetailsOfParameterSet = {
 	Param ($param1) # $FetchOrSaveDetailsOfParameterSet: (Don't delete this)
+	$Param1.'Problems' = @{ };
+	$Param1.'Warnings' = @{ };
+	$Param1.'Locations' = @{ };
 	$problems = @();
 	if ($Param1.name -ne $null -and $Param1.project -ne $null)
 	{
@@ -101,13 +104,24 @@ $FetchOrSaveDetailsOfParameterSet = {
 		if (test-path $TheLocation -PathType leaf)
 		{
 			# so we read in all the details
-			$TheActualParameters = Get-Content -Path $TheLocation -Raw | ConvertFrom-json
-			$TheActualParameters.psobject.properties |
-			Foreach { if ($_.Name -in $VariablesWeWant) { $param1[$_.Name] = $_.Value } }
-			write-verbose "fetched details from $TheLocation"
-			$VariablesWeWant | where { $_ -notin @('port', 'ProjectFolder', 'projectDescription') } |
-			foreach {
-				if ($param1.$_ -eq $null) { $Problems += "missing a value for $($_)" }
+			try
+			{
+				$JSONcontents = Get-Content -Path $TheLocation -Raw
+				$TheActualParameters = $JSONcontents | ConvertFrom-json
+			}
+			catch
+			{
+				$Problems += "Cannot read file $TheLocation because it has unescaped content"
+			}
+			if ($problems.count -eq 0)
+			{
+				$TheActualParameters.psobject.properties |
+				Foreach { if ($_.Name -in $VariablesWeWant) { $param1[$_.Name] = $_.Value } }
+				write-verbose "fetched details from $TheLocation"
+				$VariablesWeWant | where { $_ -notin @('port', 'ProjectFolder', 'projectDescription') } |
+				foreach {
+					if ($param1.$_ -eq $null) { $Problems += "missing a value for $($_)" }
+				}
 			}
 		}
 		else
@@ -139,13 +153,10 @@ $FetchOrSaveDetailsOfParameterSet = {
 	}
 	if ($Param1.'Checked' -eq $null) { $Param1.'Checked' = $false; }
 	# has it been checked against a source directory?
-	$Param1.'Problems' = @{ };
-	$Param1.'Warnings' = @{ };
-	$Param1.'Locations' = @{ };
 	@('server', 'database', 'project') |
 	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
 	if ($TheLocation -ne $null)
-	{ $Param1.Locations.'FetchOrSaveDetailsOfParameterSet' += $TheLocation; }
+	{ $Param1.Locations.'FetchOrSaveDetailsOfParameterSet' = $TheLocation; }
 	if ($problems.Count -gt 0)
 	{ $Param1.Problems.'FetchOrSaveDetailsOfParameterSet' += $problems; }
 }
@@ -333,23 +344,10 @@ $CheckCodeInDatabase = {
 		$Param1.Problems.'CheckCodeInDatabase' += $problems;
 	}
 	
-	else #now we read in the XML report and turn it into an ASCII report
-	{
-		
-		[xml]$XmlDocument = Get-Content -Path "$MyDatabasePath\codeAnalysis.xml"
-		$warnings = @();
-		$warnings += $XmlDocument.root.GetEnumerator() | foreach{
-			$name = $_.name.ToString();
-			$_.issue
-		} |
-		select-object  @{ Name = "Object"; Expression = { $name } },
-					  code, line, text
-		$Param1.Warnings.'CheckCodeInDatabase' += $warnings
-	}
 	if ($problems.Count -eq 0)
-	{ 
-    $Param1.Locations.'CheckCodeInDatabase' += "$MyDatabasePath\codeAnalysis.xml";
-     }
+	{
+		$Param1.Locations.'CheckCodeInDatabase' = "$MyDatabasePath\codeAnalysis.xml";
+	}
 	
 }
 
@@ -446,8 +444,8 @@ $CheckCodeInMigrationFiles = {
 		Write-warning "Problem '$problems' with CheckCodeInMigrationFiles! ";
 		$Param1.Problems.'CheckCodeInMigrationFiles' += $problems;
 	}
-	else
-	{ $Param1.Locations.'CheckCodeInMigrationFiles' += "$MyDatabasePath\FilecodeAnalysis.xml"; }
+	else # return the latest file
+	{ $Param1.Locations.'CheckCodeInMigrationFiles' = "$MyDatabasePath\FilecodeAnalysis.xml"; }
 	
 	
 }
@@ -976,7 +974,7 @@ SELECT @Json
 	}
 	else
 	{
-		$Param1.Locations.'ExecuteTableSmellReport' += $MyOutputReport;
+		$Param1.Locations.'ExecuteTableSmellReport' = $MyOutputReport;
 	}
 }
 
@@ -985,7 +983,7 @@ function Process-FlywayTasks
 	[CmdletBinding()]
 	param
 	(
-		[Parameter(Mandatory = $true, 
+		[Parameter(Mandatory = $true,
 				   Position = 1)]
 		[System.Collections.Hashtable]$DatabaseDetails,
 		[Parameter(Mandatory = $true,
@@ -1004,7 +1002,7 @@ function Process-FlywayTasks
 			catch #if it hit an exception
 			{
 				# handle the exception
-                $where=$PSItem.InvocationInfo.PositionMessage
+				$where = $PSItem.InvocationInfo.PositionMessage
 				$ErrorMessage = $_.Exception.Message
 				$FailedItem = $_.Exception.ItemName
 				$DatabaseDetails.Problems.exceptions += "$Taskname failed with $FailedItem : $ErrorMessage at `n $where."
@@ -1025,7 +1023,8 @@ function Process-FlywayTasks
 		$DatabaseDetails.Warnings.GetEnumerator() |
 		Foreach{ Write-warning "$($_.Key)---------"; $_.Value } |
 		foreach { write-warning  "`t$_" }
-	}
+	$DatabaseDetails.Warnings=@{}    
+    }
 }
 
 'scriptblocks and cmdlet loaded'
