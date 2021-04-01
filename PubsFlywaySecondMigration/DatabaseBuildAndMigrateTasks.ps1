@@ -172,10 +172,10 @@ $FormatTheBasicFlywayParameters = {
 		else { ":$($param1.port)" })"
 	if (!([string]::IsNullOrEmpty($param1.uid)))
 	{
-		if ($params1.pwd -eq $null) { $problems += "no password provided for $($($param1.uid))" }
+		if ($param1.pwd -eq $null) { $problems += "no password provided for $($($param1.uid))" }
 		$FlyWayArgs =
 		@("-url=jdbc:sqlserver://$($param1.Server)$maybePort;databaseName=$($param1.Database)",
-			"-locations=filesystem:$ProjectFolder\Scripts", <# the migration folder #>
+			"-locations=filesystem:$($Param1.ProjectFolder)\Scripts", <# the migration folder #>
 			"-user=$($param1.uid)",
 			"-password=$($param1.pwd)")
 	}
@@ -1014,4 +1014,4 @@ function Process-FlywayTasks
     }
 }
 
-'scriptblocks and cmdlet loaded. V24'
+'scriptblocks and cmdlet loaded. V25'
