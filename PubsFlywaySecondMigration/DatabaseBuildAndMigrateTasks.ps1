@@ -147,7 +147,7 @@ $FetchOrSaveDetailsOfParameterSet = {
 		$EscapedValues = @()
 		$EscapedValues += $Param1.GetEnumerator() |
 		where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
-			@{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+			@{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-' }
 		}
 		$EscapedValues | foreach{ $_.GetEnumerator() } | foreach{ $param1[$_.Name] = $_.Value }
 	}
@@ -217,7 +217,7 @@ $FetchAnyRequiredPasswords = {
 	{
 		$EscapedValues = $param1.GetEnumerator() |
 		where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
-			@{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+			@{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-' }
 		}
 		$EscapedValues | foreach{ $param1 += $_ }
 	}
@@ -281,7 +281,7 @@ $CheckCodeInDatabase = {
 		where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
 			@{
 				"Escaped$($_.Name)" = (
-					$_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_')
+					$_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-'
 			}
 		}
 		$EscapedValues | foreach{ $param1 += $_ }
@@ -387,7 +387,7 @@ $CheckCodeInMigrationFiles = {
 		where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
 			@{
 				"Escaped$($_.Name)" = (
-					$_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_')
+					$_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-'
 			}
 		}
 		$EscapedValues | foreach{ $param1 += $_ }
@@ -1027,4 +1027,4 @@ function Process-FlywayTasks
     }
 }
 
-'scriptblocks and cmdlet loaded'
+'scriptblocks and cmdlet loaded. V2.2'
