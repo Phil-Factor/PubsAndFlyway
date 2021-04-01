@@ -74,7 +74,6 @@ If the parameters have the name defined but vital stuff missing, it fills
 in from the last remembered version. If it has the name and the vital stuff then it assumes
 you want to save it. If no name then it ignores. 
 #>
-$param1=$DatabaseDetails
 $FetchOrSaveDetailsOfParameterSet = {
 	Param ($param1) # $FetchOrSaveDetailsOfParameterSet: (Don't delete this)
 	$Param1.'Problems' = @{ };
