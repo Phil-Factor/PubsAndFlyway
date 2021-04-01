@@ -40,7 +40,7 @@ $DatabaseDetails = @{
 	# leave blank unless you know
 	'Checked' = $false; # has it been checked against a source directory?
      }
-
+after you've used this once in this script, you can use this short form
 $DatabaseDetails = @{
 	'name' = 'TheNameToGiveThisDatabaseAndProject'; 'Project' = $MyProject;
 } 
@@ -62,9 +62,9 @@ Process-FlywayTasks $DatabaseDetails @(
     #even the ones that haven't been executed yet
 ) 
 <# if we want to, we can display all the problems in the latest migration #>
-
+$MyDatabasePath=$DatabaseDetails.Locations.CheckCodeInMigrationFiles
 if ($DatabaseDetails.Locations.CheckCodeInMigrationFiles-ne $null)
-    {[xml]$XmlDocument = Get-Content -Path "$MyDatabasePath\codeAnalysis.xml"
+    {[xml]$XmlDocument = Get-Content -Path "$MyDatabasePath"
     $warnings = @();
     $warnings += $XmlDocument.root.GetEnumerator() | foreach{
 	    $name = $_.name.ToString();
