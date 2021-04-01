@@ -45,8 +45,14 @@ $Invocations = @(
 )
 
 $OurDetails=@{
-	'name' = 'TheNameToGiveThisDatabaseAndProject'; 'Project' = $MyProject;
-  }
+  'server'='MyServer'; 
+  'Database'='MyDatabase'; 
+  'version'='MyVersion';
+  'project'='MyProjectName';
+  'uid'='MyuserID'; #if necessary!
+  'warnings'=@{};'problems'=@{}; 'Locations'=@{}
+  'name' = 'TheNameToGiveThisDatabaseAndProject';# only if you want to save it
+}
 
 
 Process-FlywayTasks $OurDetails $Invocations

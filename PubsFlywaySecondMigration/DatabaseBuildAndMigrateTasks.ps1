@@ -74,7 +74,7 @@ If the parameters have the name defined but vital stuff missing, it fills
 in from the last remembered version. If it has the name and the vital stuff then it assumes
 you want to save it. If no name then it ignores. 
 #>
-
+$param1=$DatabaseDetails
 $FetchOrSaveDetailsOfParameterSet = {
 	Param ($param1) # $FetchOrSaveDetailsOfParameterSet: (Don't delete this)
 	$Param1.'Problems' = @{ };
@@ -88,14 +88,13 @@ $FetchOrSaveDetailsOfParameterSet = {
 		$ParametersFilename = 'AllParameters.json';
 		$TheLocation = "$StoredParameters\$($Param1.Name)-$ParametersFilename"
 	}
-	
+	$VariablesWeWant = @(
+			'server', 'uid', 'port', 'project', 'database', 'projectFolder', 'projectDescription'
+		);	
 	if ($Param1.name -ne $null -and $Param1.project -ne $null -and $Param1.Server -eq $null -and $Param1.Database -eq $null)
 	{
 		# we don't want to keep passwords unencrypted and we don't want any of the transitory
 		# variables that provide state (warnings, error, version number and so on)
-		$VariablesWeWant = @(
-			'server', 'uid', 'port', 'project', 'database', 'projectFolder', 'projectDescription'
-		);
 		# If the directory doesn't exist then create it
 		if (!(test-path -Path $StoredParameters -PathType Container))
 		{ $null = New-Item -Path $StoredParameters -ItemType "directory" -Force }
@@ -425,7 +424,7 @@ $CheckCodeInMigrationFiles = {
 				foreach{ "$($_.Name)=$($_.Value)" }
 				$problems += "CodeGuard responded '$result' with error code $LASTEXITCODE when used with parameters $Args."
 			}
-			$Problems += $result | where { $_ -like '*error*' }
+			#$Problems += $result | where { $_ -like '*error*' }
 		}
 	}
 	if ($problems.Count -gt 0)
@@ -433,8 +432,8 @@ $CheckCodeInMigrationFiles = {
 		Write-warning "Problem '$problems' with CheckCodeInMigrationFiles! ";
 		$Param1.Problems.'CheckCodeInMigrationFiles' += $problems;
 	}
-	else # return the latest file
-	{ $Param1.Locations.'CheckCodeInMigrationFiles' = "$MyDatabasePath\FilecodeAnalysis.xml"; }
+
+    $Param1.Locations.'CheckCodeInMigrationFiles' = "$MyDatabasePath\FilecodeAnalysis.xml"; 
 	
 	
 }
@@ -1016,4 +1015,4 @@ function Process-FlywayTasks
     }
 }
 
-'scriptblocks and cmdlet loaded. V2.3'
+'scriptblocks and cmdlet loaded. V24'
