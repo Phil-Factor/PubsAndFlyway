@@ -154,7 +154,7 @@ $FetchOrSaveDetailsOfParameterSet = {
 	if ($Param1.'Checked' -eq $null) { $Param1.'Checked' = $false; }
 	# has it been checked against a source directory?
 	@('server', 'database', 'project') |
-	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
+	foreach{ if ($param1.$_ -in @($null,'')) { $Problems += "no value for '$($_)'" } }
 	if ($TheLocation -ne $null)
 	{ $Param1.Locations.'FetchOrSaveDetailsOfParameterSet' = $TheLocation; }
 	if ($problems.Count -gt 0)
@@ -168,7 +168,7 @@ $FormatTheBasicFlywayParameters = {
 	Param ($param1) # $FormatTheBasicFlywayParameters (Don't delete this)
 	$problems = @();
 	@('server', 'database', 'projectFolder') |
-	foreach{ if ($param1.$_ -eq $null) { $problems += "no value for '$($_)'" } }
+	foreach{ if ($param1.$_ -in @($null,'')) { $problems += "no value for '$($_)'" } }
 	
 	$MaybePort = "$(if ([string]::IsNullOrEmpty($param1.port)) { '' }
 		else { ":$($param1.port)" })"
@@ -211,7 +211,7 @@ $FetchAnyRequiredPasswords = {
 	Param ($param1) # $FetchAnyRequiredPasswords (Don't delete this)
 	$problems = @()
 	@('server') |
-	foreach{ if ($param1.$_ -eq $null) { $problem = "no value for '$($_)'" } }
+	foreach{ if ($param1.$_ -in @($null,'')) { $problem = "no value for '$($_)'" } }
 	# some values, especially server names, have to be escaped when used in file paths.
 	if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
 	{
@@ -255,16 +255,6 @@ using SQL Code Guard to do all the work. This runs SQL Codeguard
 and saves the report in a subdirectory the version directory of your 
 project artefacts. It also reports back in the $DatabaseDetails
 Hashtable. It checks the current database, not the scripts
-$OurDetails=@{
-  'server'='MyServer'; 
-  'Database'='MyDatabase'; 
-  'version'='1.1.15';
-  'project'='MyProjectName';
-  'uid'='MyUID'; #if necessary!
-  'pwd'='MyPassword'#if necessary!
-  'warnings'=@{};'problems'=@{};}
-$CheckCodeInDatabase.Invoke($OurDetails)
-$OurDetails.warnings.CheckCodeInDatabase
  #>
 $CheckCodeInDatabase = {
 	Param ($param1) # $CheckCodeInDatabase - (Don't delete this)
@@ -288,11 +278,12 @@ $CheckCodeInDatabase = {
 	}
 	#check that all the values we need are in the hashtable
 	@('server', 'Database', 'version', 'EscapedProject') |
-	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
+	foreach{ if ($param1.$_ -in @($null,'')) { $Problems += "no value for '$($_)'" } }
 	#now we create the parameters for CodeGuard.
 	$MyDatabasePath = "$($env:USERPROFILE)\Documents\GitHub\$(
 		$param1.EscapedProject)\$($param1.Version)\Reports"
-	$Arguments = @{
+	if ($MyDatabasePath -like '*\\*'){ } { $Problems += "created an illegal path '$MyDatabasePath'" }
+    $Arguments = @{
 		server = $($param1.server) #The server name to connect
 		Database = $($param1.database) #The database name to analyze
 		outfile = "$MyDatabasePath\codeAnalysis.xml" <#
@@ -336,7 +327,7 @@ $CheckCodeInDatabase = {
 			foreach{ "$($_.Name)=$($_.Value)" }
 			$problems += "CodeGuard responded '$result' with error code $LASTEXITCODE when used with parameters $Args."
 		}
-		$Problems += $result | where { $_ -like '*error*' }
+		#$Problems += $result | where { $_ -like '*error*' }
 	}
 	if ($problems.Count -gt 0)
 	{
@@ -344,10 +335,8 @@ $CheckCodeInDatabase = {
 		$Param1.Problems.'CheckCodeInDatabase' += $problems;
 	}
 	
-	if ($problems.Count -eq 0)
-	{
-		$Param1.Locations.'CheckCodeInDatabase' = "$MyDatabasePath\codeAnalysis.xml";
-	}
+	$Param1.Locations.'CheckCodeInDatabase' = "$MyDatabasePath\codeAnalysis.xml";
+
 	
 }
 
@@ -394,7 +383,7 @@ $CheckCodeInMigrationFiles = {
 	}
 	#check that all the values we need are in the hashtable
 	@('EscapedProject', 'ProjectFolder') |
-	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
+	foreach{ if ($param1.$_ -in @($null,'')) { $Problems += "no value for '$($_)'" } }
 	dir "$($param1.projectFolder)/scripts/V*.sql" | foreach{
 		$Thepath = $_.FullName;
 		$TheFile = $_.Name
@@ -456,7 +445,7 @@ table in the database. if there is no Flyway Data, then it returns a version of 
  #>
 $GetCurrentVersion = {
 	Param ($param1) # $GetCurrentVersion parameter is a hashtable 
-	@('server', 'database') | foreach{ if ($param1.$_ -eq $null) { write-error "no value for '$($_)'" } }
+	@('server', 'database') | foreach{ if ($param1.$_ -in @($null,'')) { write-error "no value for '$($_)'" } }
 	if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
 	{
 		$EscapedValues = $param1.GetEnumerator() |
@@ -514,7 +503,7 @@ $IsDatabaseIdenticalToSource = {
 	$problems = @();
 	$warnings = @();
 	@('version', 'server', 'database', 'project') |
-	foreach{ if ($param1.$_ -eq $null) { $problems += "no value for '$($_)'" } }
+	foreach{ if ($param1.$_ -in @($null,'')) { $problems += "no value for '$($_)'" } }
 	if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
 	{
 		$EscapedValues = $param1.GetEnumerator() |
@@ -647,7 +636,7 @@ $CreateBuildScriptIfNecessary = {
 	Param ($param1) # $CreateBuildScriptIfNecessary (Don't delete this) 
 	$problems = @();
 	@('version', 'server', 'database', 'project') |
-	foreach{ if ($param1.$_ -eq $null) { $Problems += "no value for '$($_)'" } }
+	foreach{ if ($param1.$_ -in @($null,'')) { $Problems += "no value for '$($_)'" } }
 	if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
 	{
 		$EscapedValues = $param1.GetEnumerator() |
@@ -1027,4 +1016,4 @@ function Process-FlywayTasks
     }
 }
 
-'scriptblocks and cmdlet loaded. V2.2'
+'scriptblocks and cmdlet loaded. V2.3'

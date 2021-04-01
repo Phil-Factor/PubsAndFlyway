@@ -45,12 +45,7 @@ $Invocations = @(
 )
 
 $OurDetails=@{
-  'server'='MyServer'; 
-  'Database'='MyDatabase'; 
-  'version'='MyVersion';
-  'project'='MyProjectName';
-  'uid'='MyuserID'; #if necessary!
-  'warnings'=@{};'problems'=@{}; 'Locations'=@{}
+	'name' = 'TheNameToGiveThisDatabaseAndProject'; 'Project' = $MyProject;
   }
 
 
@@ -58,9 +53,9 @@ Process-FlywayTasks $OurDetails $Invocations
 
 <# now we print out all the problems with the code reported by Codeguard because it is
 in XML format in the file #>
-if ($DatabaseDetails.Problems.Count -eq 0)
+if ($OurDetails.Problems.Count -eq 0)
     {
-    [xml]$XmlDocument = Get-Content -Path $DatabaseDetails.Locations.CheckCodeInDatabase
+    [xml]$XmlDocument = Get-Content -Path $OurDetails.Locations.CheckCodeInDatabase
 		$warnings = @();
 		$warnings += $XmlDocument.root.GetEnumerator() | foreach{
 			$name = $_.name.ToString();
