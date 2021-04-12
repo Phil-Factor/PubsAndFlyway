@@ -81,6 +81,7 @@ if ($DatabaseDetails.Problems.Count -eq 0)
 {
 	Flyway clean  $DatabaseDetails.FlyWayArgs
 }
+
 <# now we will upgrade one file at a time and test out all our 
 tasks as we go. We should end up with a scripts directory with
 source and build scripts. The second time we run this, the drift
@@ -99,18 +100,25 @@ Sort-Object | foreach{
 			$CheckCodeInDatabase, #checks the code in the database for issues if this hasn't been done yet
 			$IsDatabaseIdenticalToSource # if it can, checks to see if the database really is what you think
 		)
+       Process-FlywayTasks $DatabaseDetails $PreMigrationInvocations
         if ($DatabaseDetails.Problems.Count -eq 0)
-		 {Process-FlywayTasks $DatabaseDetails $PreMigrationInvocations}
-        if ($DatabaseDetails.Problems.Count -eq 0)
-          {Flyway migrate "-target=$($_.ToString())"  $DatabaseDetails.FlyWayArgs}
+          {
+          try
+            {Flyway migrate "-target=$($_.ToString())"  $DatabaseDetails.FlyWayArgs}
+          catch 
+            {	$ErrorMessage = $_.Exception.Message
+				$FailedItem = $_.Exception.ItemName
+				$DatabaseDetails.Problems.exceptions += "Flyway failed with $FailedItem : $ErrorMessage"
+                }  
+            }
 		$PostMigrationInvocations = @(
 			$GetCurrentVersion, #checks the database and gets the current version number 
 			$CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version
 			$CreateScriptFoldersIfNecessary, #writes out a source folder with an object level script if absent
-            $ExecuteTableSmellReport #checks for table-smells
+            $ExecuteTableSmellReport, #checks for table-smells
+            $ExecuteTableDocumentationReport #publishes table docuentation
 		)
-        if ($DatabaseDetails.Problems.Count -eq 0)
-            {Process-FlywayTasks $DatabaseDetails $PostMigrationInvocations}
+        Process-FlywayTasks $DatabaseDetails $PostMigrationInvocations
 	}
 }
 

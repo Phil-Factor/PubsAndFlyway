@@ -51,4 +51,3 @@ SELECT publishers.pub_name AS publisher, title,
 	ON publications.pub_id = publishers.pub_id
 '
 	
-SELECT installed_rank, [version], [description], success FROM dbo.flyway_schema_history;

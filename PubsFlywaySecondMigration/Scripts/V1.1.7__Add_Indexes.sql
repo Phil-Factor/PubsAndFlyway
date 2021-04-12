@@ -76,27 +76,24 @@ WHILE @ii <= @iiMax
   BEGIN
     SELECT @Schemaname = Object_Schema_Name(Object_Id(Tablename)),
       @TableName = Object_Name(Object_Id(Tablename)),
-      @TheDescription = TheDescription,
-	  @Object_id=Object_Id(TableName)
-        FROM @WhatToDocument
-        WHERE @ii = TheOrder;
-      IF (@Object_id IS NOT NULL) --if the table exists
-    IF NOT EXISTS --does the extended property exist?
-      (
-      SELECT 1
-        FROM sys.fn_listextendedproperty
-		  (N'MS_Description', N'SCHEMA',@Schemaname,
-           N'TABLE',@TableName, null, null
-          )
-      )
-      EXEC sys.sp_addextendedproperty @name = N'MS_Description',
-        @value = @TheDescription, @level0type = N'SCHEMA',
-        @level0name = @Schemaname, @level1type = N'TABLE',
-        @level1name = @TableName;;
-    ELSE
-      EXEC sys.sp_updateextendedproperty @name = N'MS_Description',
-        @value = @TheDescription, @level0type = N'SCHEMA',
-        @level0name = @Schemaname, @level1type = N'TABLE',
-        @level1name = @TableName;;
+      @TheDescription = TheDescription, @Object_id = Object_Id(Tablename)
+      FROM @WhatToDocument
+      WHERE @ii = TheOrder;
+    IF (@Object_id IS NOT NULL) --if the table exists
+      IF NOT EXISTS --does the extended property exist?
+            (SELECT 1  FROM sys.fn_listextendedproperty(
+                     N'MS_Description', N'SCHEMA',
+                     @Schemaname,N'TABLE',@TableName,
+                     NULL,NULL)
+            )
+        EXEC sys.sp_addextendedproperty @name = N'MS_Description',
+          @value = @TheDescription, @level0type = N'SCHEMA',
+          @level0name = @Schemaname, @level1type = N'TABLE',
+          @level1name = @TableName;;
+      ELSE
+        EXEC sys.sp_updateextendedproperty @name = N'MS_Description',
+          @value = @TheDescription, @level0type = N'SCHEMA',
+          @level0name = @Schemaname, @level1type = N'TABLE',
+          @level1name = @TableName;;
     SELECT @ii = @ii + 1; -- on to the next one
   END;

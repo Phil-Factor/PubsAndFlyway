@@ -61,8 +61,20 @@ $GetCurrentVersion to have been run beforehand in the chain of tasks.
 $ExecuteTableSmellReport
 This scriptblock executes SQL that produces a report in XML or JSON from the database
 that alerts you to tables that may have issues
- 
+
+$ExecuteTableDocumentationReport
+ This places in a report a json report of the documentation of every table and its
+columns. If you add or change tables, this can be subsequently used to update the 
+AfterMigrate callback script
+for the documentation. 
+
+
  #>
+
+$SQLCmdAlias = "$($env:ProgramFiles)\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\sqlcmd.exe"
+$CodeGuardAlias= "${env:ProgramFiles(x86)}\SQLCodeGuard\SqlCodeGuard30.Cmd.exe"
+$SQLCompareAlias= "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.exe"
+
 
 
 
@@ -257,7 +269,7 @@ Hashtable. It checks the current database, not the scripts
 $CheckCodeInDatabase = {
 	Param ($param1) # $CheckCodeInDatabase - (Don't delete this)
 	#you must set this value correctly before starting.
-	Set-Alias CodeGuard "${env:ProgramFiles(x86)}\SQLCodeGuard\SqlCodeGuard30.Cmd.exe" -Scope local
+	Set-Alias CodeGuard $CodeGuardAlias -Scope local
 	$Problems = @(); #our local problem counter
 	#is that alias correct?
 	if (!(test-path  ((Get-alias -Name codeguard).definition) -PathType Leaf))
@@ -362,7 +374,7 @@ $CheckCodeInMigrationFiles.Invoke($Details) #>
 $CheckCodeInMigrationFiles = {
 	Param ($param1) # $CheckCodeInMigrationFiles - (Don't delete this)
 	#you must set this value correctly before starting.
-	Set-Alias CodeGuard "${env:ProgramFiles(x86)}\SQLCodeGuard\SqlCodeGuard30.Cmd.exe" -Scope local
+	Set-Alias CodeGuard $CodeGuardAlias -Scope local
 	$Problems = @(); #our local problem counter
 	#is that alias correct?
 	if (!(test-path  ((Get-alias -Name codeguard).definition) -PathType Leaf))
@@ -453,7 +465,7 @@ $GetCurrentVersion = {
 		$EscapedValues | foreach{ $param1 += $_ }
 	}
 	#the alias must be set to the path of your installed version of SQL Compare
-	Set-Alias SQLCmd   "$($env:ProgramFiles)\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\sqlcmd.exe" -Scope local
+	Set-Alias SQLCmd   $SQLCmdAlias -Scope local
 	$Problems = @();
 	#is that alias correct?
 	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
@@ -516,7 +528,7 @@ $IsDatabaseIdenticalToSource = {
 	if (-not ($goodVersion))
 	{ $problems += "Bad version number '$($param1.Version)'" }
 	#the alias must be set to the path of your installed version of SQL Compare
-	Set-Alias SQLCompare "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.exe" -Scope Script
+	Set-Alias SQLCompare $SQLCompareAlias -Scope Script
 	if (!(test-path  ((Get-alias -Name SQLCompare).definition) -PathType Leaf))
 	{ $Problems += 'The alias for SQLCompare is not set correctly yet' }
 	if ($problems.Count -eq 0)
@@ -591,7 +603,7 @@ $CreateScriptFoldersIfNecessary = {
 		$EscapedValues | foreach{ $param1 += $_ }
 	}
 	#the alias must be set to the path of your installed version of SQL Compare
-	Set-Alias SQLCompare "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.exe" -Scope Script
+	Set-Alias SQLCompare $SQLCompareAlias -Scope Script
 	if (!(test-path  ((Get-alias -Name SQLCompare).definition) -PathType Leaf))
 	{ $Problems += 'The alias for SQLCompare is not set correctly yet' }
 	#the database scripts path would be up to you to define, of course
@@ -644,7 +656,7 @@ $CreateBuildScriptIfNecessary = {
 		$EscapedValues | foreach{ $param1 += $_ }
 	}
 	#the alias must be set to the path of your installed version of SQL Compare
-	Set-Alias SQLCompare "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.exe" -Scope Script
+	Set-Alias SQLCompare $SQLCompareAlias -Scope Script
 	if (!(test-path  ((Get-alias -Name SQLCompare).definition) -PathType Leaf))
 	{ $Problems += 'The alias for SQLCompare is not set correctly yet' }
 	#the database scripts path would be up to you to define, of course
@@ -722,7 +734,7 @@ $ExecuteTableSmellReport = {
 	}
 	$MyOutputReport = "$MyDatabasePath\TableIssues.JSON"
 	#the alias must be set to the path of your installed version of SQL Compare
-	Set-Alias SQLCmd   "$($env:ProgramFiles)\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\sqlcmd.exe" -Scope local
+	Set-Alias SQLCmd   $SQLCmdAlias  -Scope local
 	#is that alias correct?
 	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
 	{ $Problems += 'The alias for SQLCMD is not set correctly yet' }
@@ -965,6 +977,106 @@ SELECT @Json
 	}
 }
 
+<# This places in a report a json report of the documentation of every table and its
+columns. If you add or change tables, this can be subsequently used to update the 
+AfterMigrate callback script
+for the documentation */#>
+
+$ExecuteTableDocumentationReport = {
+	Param ($param1) # $ExecuteTableSmellReport - parameter is a hashtable 
+	$problems = @()
+	@('server', 'database', 'version', 'project') | foreach{
+		if ($param1.$_ -eq $null)
+		{ write-error "no value for '$($_)'" }
+	}
+	if ($param1.EscapedProject -eq $null) #check that escapedValues are in place
+	{
+		$EscapedValues = $param1.GetEnumerator() |
+		where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
+			@{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
+		}
+		$EscapedValues | foreach{ $param1 += $_ }
+	}
+	$MyDatabasePath = "$($env:USERPROFILE)\Documents\GitHub\$(
+		$param1.EscapedProject)\$($param1.Version)\Reports"
+	if (-not (Test-Path -PathType Container $MyDatabasePath))
+	{
+		# does the path to the reports directory exist?
+		# not there, so we create the directory 
+		$null = New-Item -ItemType Directory -Force $MyDatabasePath;
+	}
+	$MyOutputReport = "$MyDatabasePath\TableDocumentation.JSON"
+	#the alias must be set to the path of your installed version of SQL Compare
+	Set-Alias SQLCmd   $SQLCMDAlias  -Scope local
+	#is that alias correct?
+	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
+	{ $Problems += 'The alias for SQLCMD is not set correctly yet' }
+	$query = @'
+SET NOCOUNT ON
+DECLARE @JSONReport NVARCHAR(MAX)
+SELECT @JSONReport=(SELECT Object_Schema_Name(TABLES.object_id) + '.' + TABLES.name AS TableObjectName,
+	 Lower(Replace(type_desc,'_',' ')) AS [Type], --the type of table source
+     Coalesce(Convert(NVARCHAR(3800), ep.value), '') AS "Description",
+	  (SELECT Json_Query('{'+String_Agg('"'+String_Escape(TheColumns.name,N'json')
+            +'":'+'"'+Coalesce(String_Escape(Convert(NVARCHAR(3800),epcolumn.value),N'json'),'')+'"', ',')
+			WITHIN GROUP ( ORDER BY TheColumns.column_id ASC )  +'}') Columns
+	    FROM sys.columns AS TheColumns
+         LEFT OUTER JOIN sys.extended_properties epcolumn --get any description
+          ON epcolumn.major_id = TABLES.object_id
+         AND epcolumn.minor_id = TheColumns.column_id
+         AND epcolumn.name = 'MS_Description' --you may choose a different name
+        WHERE TheColumns.object_id = TABLES.object_id)
+     AS TheColumns
+      FROM sys.objects tables
+        LEFT OUTER JOIN sys.extended_properties ep
+          ON ep.major_id = TABLES.object_id
+         AND ep.minor_id = 0
+         AND ep.name = 'MS_Description'
+      WHERE type IN ('IF','FT','TF','U','V')
+FOR JSON AUTO)
+SELECT @JSONReport
+'@
+	
+	if (!([string]::IsNullOrEmpty($param1.uid)) -and ([string]::IsNullOrEmpty($param1.pwd)))
+	{ $problems += 'No password is specified' }
+	If (!(Test-Path -PathType Leaf  $MyOutputReport) -and ($problems.Count -eq 0))# do the report once only
+	{
+		if (!([string]::IsNullOrEmpty($param1.uid)))
+		{
+			$MyJSON = sqlcmd -S "$($param1.server)" -d "$($param1.database)" `
+							 -Q `"$query`" -U $($param1.uid) -P $($param1.pwd) -o $MyOutputReport -u -y0
+			$arguments = "$($param1.server) -d $($param1.database) -U $($param1.uid) -P $($param1.pwd) -o $MyOutputReport"
+		}
+		else
+		{
+			$MyJSON = sqlcmd -S "$($param1.server)" -d "$($param1.database)" -Q `"$query`" -E -o $MyOutputReport -u -y0
+			$arguments = "$($param1.server) -d $($param1.database) -o $MyOutputReport"
+		}
+		if (!($?))
+		{
+			#report a problem and send back the args for diagnosis (hint, only for script development)
+			$Problems += "sqlcmd failed with code $LASTEXITCODE, $Myversions, with parameters $arguments"
+		}
+		$possibleError = Get-Content -Path $MyOutputReport -raw
+		if ($PossibleError -like '*Sqlcmd: Error*')
+		{
+			$Problems += $possibleError;
+			Remove-Item $MyOutputReport;
+		}
+		
+	}
+	if ($problems.Count -gt 0)
+	{
+		$Param1.Problems.'ExecuteTableDocumentationReport' += $problems;
+	}
+	else
+	{
+		$Param1.Locations.'ExecuteTableDocumentationReport' = $MyOutputReport;
+	}
+}
+
+
+
 function Process-FlywayTasks
 {
 	[CmdletBinding()]
@@ -1014,4 +1126,4 @@ function Process-FlywayTasks
     }
 }
 
-'scriptblocks and cmdlet loaded. V25'
+'scriptblocks and cmdlet loaded. V26'
