@@ -982,12 +982,16 @@ columns. If you add or change tables, this can be subsequently used to update th
 AfterMigrate callback script
 for the documentation */#>
 
+<# This places in a report a json report of the documentation of every table and its
+columns. If you add or change tables, this can be subsequently used to update the 
+AfterMigrate callback script
+for the documentation */#>
 $ExecuteTableDocumentationReport = {
 	Param ($param1) # $ExecuteTableSmellReport - parameter is a hashtable 
 	$problems = @()
 	@('server', 'database', 'version', 'project') | foreach{
 		if ($param1.$_ -eq $null)
-		{ write-error "no value for '$($_)'" }
+		{ $Problems= "no value for '$($_)'" }
 	}
 	if ($param1.EscapedProject -eq $null) #check that escapedValues are in place
 	{
@@ -1007,18 +1011,17 @@ $ExecuteTableDocumentationReport = {
 	}
 	$MyOutputReport = "$MyDatabasePath\TableDocumentation.JSON"
 	#the alias must be set to the path of your installed version of SQL Compare
-	Set-Alias SQLCmd   $SQLCMDAlias  -Scope local
+	Set-Alias SQLCmd   $SQLCMDAlias -Scope local
 	#is that alias correct?
 	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
 	{ $Problems += 'The alias for SQLCMD is not set correctly yet' }
 	$query = @'
-SET NOCOUNT ON
 DECLARE @JSONReport NVARCHAR(MAX)
 SELECT @JSONReport=(SELECT Object_Schema_Name(TABLES.object_id) + '.' + TABLES.name AS TableObjectName,
 	 Lower(Replace(type_desc,'_',' ')) AS [Type], --the type of table source
-     Coalesce(Convert(NVARCHAR(3800), ep.value), '') AS "Description",
-	  (SELECT Json_Query('{'+String_Agg('"'+String_Escape(TheColumns.name,N'json')
-            +'":'+'"'+Coalesce(String_Escape(Convert(NVARCHAR(3800),epcolumn.value),N'json'),'')+'"', ',')
+     Coalesce(Convert(NVARCHAR(3800), ep.value), '') AS [Description],
+	  (SELECT Json_Query('{'+String_Agg(Char(34)+String_Escape(TheColumns.name,N'json')
+            +Char(34)+':'+Char(34)+Coalesce(String_Escape(Convert(NVARCHAR(3800),epcolumn.value),N'json'),'')+Char(34), ',')
 			WITHIN GROUP ( ORDER BY TheColumns.column_id ASC )  +'}') Columns
 	    FROM sys.columns AS TheColumns
          LEFT OUTER JOIN sys.extended_properties epcolumn --get any description
@@ -1034,23 +1037,22 @@ SELECT @JSONReport=(SELECT Object_Schema_Name(TABLES.object_id) + '.' + TABLES.n
          AND ep.name = 'MS_Description'
       WHERE type IN ('IF','FT','TF','U','V')
 FOR JSON AUTO)
+SELECT IsJson( @JSONReport)
 SELECT @JSONReport
 '@
-	
 	if (!([string]::IsNullOrEmpty($param1.uid)) -and ([string]::IsNullOrEmpty($param1.pwd)))
 	{ $problems += 'No password is specified' }
-	If (!(Test-Path -PathType Leaf  $MyOutputReport) -and ($problems.Count -eq 0))# do the report once only
+	If (!(Test-Path -PathType Leaf  $MyOutputReport) -and ($problems.Count -eq 0)) # do the report once only
 	{
 		if (!([string]::IsNullOrEmpty($param1.uid)))
 		{
-			$MyJSON = sqlcmd -S "$($param1.server)" -d "$($param1.database)" `
-							 -Q `"$query`" -U $($param1.uid) -P $($param1.pwd) -o $MyOutputReport -u -y0
-			$arguments = "$($param1.server) -d $($param1.database) -U $($param1.uid) -P $($param1.pwd) -o $MyOutputReport"
+			$MyJSON = sqlcmd -Q `"$query`" -S "$($param1.server)" -d "$($param1.database)" -U $($param1.uid) -P $($param1.pwd) -o $MyOutputReport -u -y0
+			$arguments = "-S $($param1.server) -d $($param1.database) -U $($param1.uid) -P $($param1.pwd) -o $MyOutputReport  -u -y0"
 		}
 		else
 		{
 			$MyJSON = sqlcmd -S "$($param1.server)" -d "$($param1.database)" -Q `"$query`" -E -o $MyOutputReport -u -y0
-			$arguments = "$($param1.server) -d $($param1.database) -o $MyOutputReport"
+			$arguments = "$($param1.server) -d $($param1.database) -E -o $MyOutputReport  -u -y0"
 		}
 		if (!($?))
 		{
@@ -1063,8 +1065,7 @@ SELECT @JSONReport
 			$Problems += $possibleError;
 			Remove-Item $MyOutputReport;
 		}
-		
-	}
+ 	}
 	if ($problems.Count -gt 0)
 	{
 		$Param1.Problems.'ExecuteTableDocumentationReport' += $problems;
