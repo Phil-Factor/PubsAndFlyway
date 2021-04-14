@@ -1,4 +1,4 @@
-﻿
+
 DISABLE TRIGGER ALL ON DATABASE;
 --now disable all constraints
 EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL';
@@ -8838,4 +8838,3 @@ N'Database_Info', DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT
 ELSE EXEC sys.sp_updateextendedproperty @name = N'Database_Info',
 @value = @DatabaseInfo;
 go
-
