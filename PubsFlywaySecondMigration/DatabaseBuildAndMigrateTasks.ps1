@@ -1016,30 +1016,56 @@ $ExecuteTableDocumentationReport = {
 	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
 	{ $Problems += 'The alias for SQLCMD is not set correctly yet' }
 	$query = @'
-DECLARE @JSONReport NVARCHAR(MAX)
-SELECT @JSONReport=(SELECT Object_Schema_Name(TABLES.object_id) + '.' + TABLES.name AS TableObjectName,
-	 Lower(Replace(type_desc,'_',' ')) AS [Type], --the type of table source
-     Coalesce(Convert(NVARCHAR(3800), ep.value), '') AS [Description],
-	  (SELECT Json_Query('{'+String_Agg(Char(34)+String_Escape(TheColumns.name,N'json')
-            +Char(34)+':'+Char(34)+Coalesce(String_Escape(Convert(NVARCHAR(3800),epcolumn.value),N'json'),'')+Char(34), ',')
-			WITHIN GROUP ( ORDER BY TheColumns.column_id ASC )  +'}') Columns
-	    FROM sys.columns AS TheColumns
+DECLARE  @Json NVARCHAR(MAX)
+DECLARE @TheSQExpression NVARCHAR(MAX)
+IF (SELECT TOP 1 compatibility_level FROM sys.databases WHERE name LIKE Db_Name())>=140
+SELECT @TheSQExpression=N'Select @TheJson=(SELECT Object_Schema_Name(TABLES.object_id) + ''.'' + TABLES.name AS TableObjectName,
+     Lower(Replace(type_desc,''_'','' '')) AS [Type], --the type of table source
+     Coalesce(Convert(NVARCHAR(3800), ep.value), '''') AS "Description",
+      (SELECT Json_Query(''{''+String_Agg(''"''+String_Escape(TheColumns.name,N''json'')
+            +''":''+''"''+Coalesce(String_Escape(Convert(NVARCHAR(3800),epcolumn.value),N''json''),'''')+''"'', '','')
+            WITHIN GROUP ( ORDER BY TheColumns.column_id ASC )  +''}'') Columns
+        FROM sys.columns AS TheColumns
          LEFT OUTER JOIN sys.extended_properties epcolumn --get any description
           ON epcolumn.major_id = TABLES.object_id
          AND epcolumn.minor_id = TheColumns.column_id
-         AND epcolumn.class=7
-         AND epcolumn.name = 'MS_Description' --you may choose a different name
+		 AND epcolumn.class=7
+         AND epcolumn.name = ''MS_Description'' --you may choose a different name
         WHERE TheColumns.object_id = TABLES.object_id)
      AS TheColumns
       FROM sys.objects tables
         LEFT OUTER JOIN sys.extended_properties ep
           ON ep.major_id = TABLES.object_id
          AND ep.minor_id = 0
-         AND ep.name = 'MS_Description'
-      WHERE type IN ('IF','FT','TF','U','V')
-FOR JSON AUTO)
-SELECT IsJson( @JSONReport)
-SELECT @JSONReport
+         AND ep.name = ''MS_Description''
+      WHERE type IN (''IF'',''FT'',''TF'',''U'',''V'')
+FOR JSON auto)'
+ELSE
+SELECT @TheSQExpression=N'Select @TheJson=(SELECT Object_Schema_Name(TABLES.object_id) + ''.'' + TABLES.name AS TableObjectName,
+     Lower(Replace(type_desc,''_'','' '')) AS [Type], --the type of table source
+     Coalesce(Convert(NVARCHAR(3800), ep.value), '''') AS "Description",	
+	
+	(SELECT	Json_Query(''{''+Stuff((SELECT '', ''+''"''+String_Escape(TheColumns.name,N''json'')
+            +''":''+''"''+Coalesce(String_Escape(Convert(NVARCHAR(3800),epcolumn.value),N''json''),'''')+''"''
+		FROM sys.columns TheColumns
+         LEFT OUTER JOIN sys.extended_properties epcolumn --get any description
+          ON epcolumn.major_id = Tables.object_id
+         AND epcolumn.minor_id = TheColumns.column_id
+		 AND epcolumn.class=7
+         AND epcolumn.name = ''MS_Description'' --you may choose a different name
+        WHERE TheColumns.object_id = Tables.object_id
+		ORDER BY TheColumns.column_id
+		 FOR XML PATH(''''), TYPE).value(''.'', ''nvarchar(max)''),1,2,'''')  +''}'' )) TheColumns
+      FROM sys.objects tables
+        LEFT OUTER JOIN sys.extended_properties ep
+          ON ep.major_id = TABLES.object_id
+         AND ep.minor_id = 0
+         AND ep.name = ''MS_Description''
+      WHERE type IN (''IF'',''FT'',''TF'',''U'',''V'')
+FOR JSON AUTO)'
+
+EXECUTE sp_EXECUTESQL @TheSQExpression,N'@TheJSON nvarchar(max) output',@TheJSON=@Json OUTPUT
+SELECT @JSON
 '@
 	if (!([string]::IsNullOrEmpty($param1.uid)) -and ([string]::IsNullOrEmpty($param1.pwd)))
 	{ $problems += 'No password is specified' }
