@@ -1027,6 +1027,7 @@ SELECT @JSONReport=(SELECT Object_Schema_Name(TABLES.object_id) + '.' + TABLES.n
          LEFT OUTER JOIN sys.extended_properties epcolumn --get any description
           ON epcolumn.major_id = TABLES.object_id
          AND epcolumn.minor_id = TheColumns.column_id
+         AND epcolumn.class=7
          AND epcolumn.name = 'MS_Description' --you may choose a different name
         WHERE TheColumns.object_id = TABLES.object_id)
      AS TheColumns
