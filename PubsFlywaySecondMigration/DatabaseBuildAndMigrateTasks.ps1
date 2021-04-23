@@ -1018,7 +1018,18 @@ $ExecuteTableDocumentationReport = {
 	$query = @'
 DECLARE  @Json NVARCHAR(MAX)
 DECLARE @TheSQExpression NVARCHAR(MAX)
-IF (SELECT TOP 1 compatibility_level FROM sys.databases WHERE name LIKE Db_Name())>=140
+DECLARE @TheErrorNumber INT
+SELECT @TheErrorNumber=0
+ BEGIN TRY
+      EXECUTE sp_executesql  @stmt = N'Declare @null nvarchar(100)
+	  SELECT @null=String_Agg(text,'','') FROM (VALUES (''testing''),(''testing''),(''one''),(''Two''),(''three''))f(Text)'
+    END TRY
+    BEGIN CATCH
+       SELECT @TheErrorNumber=Error_Number() 
+    END CATCH;
+/*On Transact SQL language the Msg 195 Level 15 - 'Is not a recognized built-in function name'
+ means that the function name is misspelled, not supported  or does not exist. */
+IF @TheErrorNumber = 0 
 SELECT @TheSQExpression=N'Select @TheJson=(SELECT Object_Schema_Name(TABLES.object_id) + ''.'' + TABLES.name AS TableObjectName,
      Lower(Replace(type_desc,''_'','' '')) AS [Type], --the type of table source
      Coalesce(Convert(NVARCHAR(3800), ep.value), '''') AS "Description",
@@ -1029,7 +1040,7 @@ SELECT @TheSQExpression=N'Select @TheJson=(SELECT Object_Schema_Name(TABLES.obje
          LEFT OUTER JOIN sys.extended_properties epcolumn --get any description
           ON epcolumn.major_id = TABLES.object_id
          AND epcolumn.minor_id = TheColumns.column_id
-		 AND epcolumn.class=7
+		 AND epcolumn.class=1
          AND epcolumn.name = ''MS_Description'' --you may choose a different name
         WHERE TheColumns.object_id = TABLES.object_id)
      AS TheColumns
@@ -1051,7 +1062,7 @@ SELECT @TheSQExpression=N'Select @TheJson=(SELECT Object_Schema_Name(TABLES.obje
          LEFT OUTER JOIN sys.extended_properties epcolumn --get any description
           ON epcolumn.major_id = Tables.object_id
          AND epcolumn.minor_id = TheColumns.column_id
-		 AND epcolumn.class=7
+		 AND epcolumn.class=1
          AND epcolumn.name = ''MS_Description'' --you may choose a different name
         WHERE TheColumns.object_id = Tables.object_id
 		ORDER BY TheColumns.column_id
