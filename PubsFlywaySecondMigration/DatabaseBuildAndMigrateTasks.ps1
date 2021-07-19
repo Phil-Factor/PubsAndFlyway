@@ -1,5 +1,30 @@
 ﻿<#
 
+$CreateScriptFoldersIfNecessary:
+this task checks to see if a Source folder already exists for this version of the
+database and, if not, it will create one and fill it with subdirectories for each
+type of object. A tables folder will, for example, have a file for every table each
+containing a build script to create that object. When this exists, it allows SQL Compare
+to do comparisons and check that a version has not drifted. It saves the Source folder
+as a subfolder for the supplied version, so it needs $GetCurrentVersion to have been
+run beforehand in the chain of tasks.
+
+$CreateBuildScriptIfNecessary: 
+produces a build script from the database, using SQL Compare. It saves the build script
+in the Scripts folder, as a subfolder for the supplied version, so it needs
+$GetCurrentVersion to have been run beforehand in the chain of tasks.
+
+
+$ExecuteTableSmellReport
+This scriptblock executes SQL that produces a report in XML or JSON from the database
+that alerts you to tables that may have issues
+
+$ExecuteTableDocumentationReport
+ This places in a report a json report of the documentation of every table and its
+columns. If you add or change tables, this can be subsequently used to update the 
+AfterMigrate callback script
+for the documentation. 
+
 $FetchOrSaveDetailsOfParameterSet
 This checks over the scriptblock and  adds escaped values of server, database 
 and project. it allows you to save and load the shared parameters for all these 
@@ -21,19 +46,6 @@ the flyway_schema_history data table in the database. It merely finds the highes
 version number recorded as being successfully used. If it is an empty database,
 or there is just no Flyway data, then it returns a version of 0.0.0.
 
-$CheckCodeInDatabase 
-This runs SQL code analysis on the scripted objects  within the database such as
-procedure, functions and views within the database and saves the report and reports 
-back any issues in the $DatabaseDetails hash table. It saves the reports in the
-designated project directory, in a Reports folder, as a subfolder for the supplied
-version (for example, in Pubs\1.1.5\Reports), so it needs $GetCurrentVersion to have
-been run beforehand in the chain of tasks.
-
-$CheckCodeInMigrationFiles
-This, where necessary,  runs SQL code analysis on all the migration files in the folder and
-saves the report and saves the reports in the designated project directory, each one in a
-Reports folder, as a subfolder for the supplied version (for example, in Pubs\1.1.5\Reports).
-
 $IsDatabaseIdenticalToSource: 
 This uses SQL Compare to check that a version of a database is correct and hasn't been
 changed. To do this, the $CreateScriptFoldersIfNecessary task must have been run
@@ -44,29 +56,7 @@ the comparison returns $null, then it means there has been an error. To access
 the right source folder for this database version, it needs $GetCurrentVersion
 to have been run beforehand in the chain of tasks
 
-$CreateScriptFoldersIfNecessary:
-this task checks to see if a Source folder already exists for this version of the
-database and, if not, it will create one and fill it with subdirectories for each
-type of object. A tables folder will, for example, have a file for every table each
-containing a build script to create that object. When this exists, it allows SQL Compare
-to do comparisons and check that a version has not drifted. It saves the Source folder
-as a subfolder for the supplied version, so it needs $GetCurrentVersion to have been
-run beforehand in the chain of tasks.
 
-$CreateBuildScriptIfNecessary: 
-produces a build script from the database, using SQL Compare. It saves the build script
-in the Scripts folder, as a subfolder for the supplied version, so it needs
-$GetCurrentVersion to have been run beforehand in the chain of tasks.
-
-$ExecuteTableSmellReport
-This scriptblock executes SQL that produces a report in XML or JSON from the database
-that alerts you to tables that may have issues
-
-$ExecuteTableDocumentationReport
- This places in a report a json report of the documentation of every table and its
-columns. If you add or change tables, this can be subsequently used to update the 
-AfterMigrate callback script
-for the documentation. 
 
 
  #>
@@ -232,7 +222,7 @@ $FetchAnyRequiredPasswords = {
 		$EscapedValues | foreach{ $param1 += $_ }
 	}
 	# now we get the password if necessary
-	if ($param1.uid -ne '') #then it is using SQL Server Credentials
+	if (!([string]::IsNullOrEmpty($param1.uid))) #then it is using SQL Server Credentials
 	{
 		# we see if we've got these stored already
 		$SqlEncryptedPasswordFile = "$env:USERPROFILE\$($param1.uid)-$($param1.Escapedserver).xml"
@@ -251,8 +241,10 @@ $FetchAnyRequiredPasswords = {
         <# Export-Clixml only exports encrypted credentials on Windows.
         otherwise it just offers some obfuscation but does not provide encryption. #>
 		}
+
 		$param1.Uid = $SqlCredentials.UserName;
 		$param1.Pwd = $SqlCredentials.GetNetworkCredential().password
+        Write-Warning "now fetched $($SqlCredentials.GetNetworkCredential().password) for $($SqlCredentials.UserName)"
 	}
 	if ($problems.Count -gt 0)
 	{
@@ -1165,4 +1157,4 @@ function Process-FlywayTasks
     }
 }
 
-'scriptblocks and cmdlet loaded. V26'
+'scriptblocks and cmdlet loaded. V27'

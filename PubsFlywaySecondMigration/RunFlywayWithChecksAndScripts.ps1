@@ -49,7 +49,7 @@ Process-FlywayTasks  $DatabaseDetails @($FetchOrSaveDetailsOfParameterSet)
 
 #>
 $DatabaseDetails = @{
-	'name' = 'TheNameToGiveThisDatabaseAndProject'; 'Project' = $MyProject;
+	'name' = 'Sigrid'; 'Project' = $MyProject;
 }
 
 <# first grab all those boring details from disk for the project and database #>  
@@ -122,5 +122,5 @@ Sort-Object | foreach{
 	}
 }
 
-
+$DatabaseDetails.Locations.ExecuteTableDocumentationReport
 
