@@ -1,5 +1,4 @@
-﻿
--- ''Creating types'
+﻿-- ''Creating types'
 
 CREATE DOMAIN dbo.Dollars as numeric (9, 2) NOT NULL;
 -- 'Altering dbo.employee'
@@ -61,7 +60,6 @@ ytd_sales int NULL,
 PriceStartDate date NOT NULL DEFAULT (current_Date),
 PriceEndDate date NULL
 );
-
 
 
 

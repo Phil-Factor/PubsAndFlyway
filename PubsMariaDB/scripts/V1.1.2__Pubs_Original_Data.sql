@@ -1495,47 +1495,46 @@ INSERT into dbo.employee VALUES
 ( 'DBT39435M', N'Daniel', 'B', 'Tonini', 11, 75, '0877    ', '1990-01-01T00:00:00' );
 
 ALTER TABLE discounts
-	ADD FOREIGN KEY (stor_id) 
+	ADD constraint fk_Discounts_Stores_Stor_id FOREIGN KEY (stor_id) 
 	REFERENCES stores (stor_id);
 
 
 ALTER TABLE employee
-	ADD FOREIGN KEY (job_id) 
+	ADD constraint fk_Employee_Pubs_JobID FOREIGN KEY (job_id) 
 	REFERENCES jobs (job_id);
 
 ALTER TABLE employee
-	ADD FOREIGN KEY (pub_id) 
+	ADD constraint fk_Employee_publishers_pub_id  FOREIGN KEY (pub_id) 
 	REFERENCES publishers (pub_id);
 
 
 ALTER TABLE pub_info
-	ADD FOREIGN KEY (pub_id) 
+	ADD constraint fk_Pubinfo_publishers_pub_id FOREIGN KEY (pub_id) 
 	REFERENCES publishers (pub_id);
 
 
 ALTER TABLE roysched
-	ADD FOREIGN KEY (title_id) 
+	ADD constraint fk_roysched_Titles_title_id FOREIGN KEY (title_id) 
 	REFERENCES titles (title_id);
 
-
 ALTER TABLE sales
-	ADD FOREIGN KEY (stor_id) 
+	ADD constraint fk_sales_stores_Store_id FOREIGN KEY (stor_id) 
 	REFERENCES stores (stor_id);
 
 ALTER TABLE sales
-	ADD FOREIGN KEY (title_id) 
+	ADD constraint fk_sales_titles_titleid FOREIGN KEY (title_id) 
 	REFERENCES titles (title_id);
 
 
 ALTER TABLE titleauthor
-	ADD FOREIGN KEY (au_id) 
+	ADD constraint fk_titleauthor_authors_au_id FOREIGN KEY (au_id) 
 	REFERENCES authors (au_id);
 
 ALTER TABLE titleauthor
-	ADD FOREIGN KEY (title_id) 
+	ADD constraint fk_titleauthor_titles_title_id FOREIGN KEY (title_id) 
 	REFERENCES titles (title_id);
 
 
 ALTER TABLE titles
-	ADD FOREIGN KEY (pub_id) 
+	ADD constraint fk_titles_Publishers_pub_id  FOREIGN KEY (pub_id) 
 	REFERENCES publishers (pub_id);
