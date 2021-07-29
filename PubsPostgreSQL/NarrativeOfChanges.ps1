@@ -87,7 +87,7 @@ $PreviousVersion = $null; #
 
 @('1.1.2', '1.1.3', '1.1.4', '1.1.5') | foreach{
 	$Version = $_;
-	$changes = ([IO.File]::ReadAllText("C:\Users\andre\Documents\GitHub\PolyGlotPubs\$Version\Changes.json")) | ConvertFrom-JSON
+	$changes = ([IO.File]::ReadAllText("$:versionPath$Version\Changes.json")) | ConvertFrom-JSON
 	$changes | foreach{
 		$current = $_;
 		switch ($current.Match)
