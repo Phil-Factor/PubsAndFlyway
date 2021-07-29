@@ -1,6 +1,6 @@
 ﻿-- ''Creating types'
 
-CREATE DOMAIN dbo.Dollars as numeric (9, 2) NOT NULL;
+CREATE DOMAIN dbo.Dollars as numeric (9, 2) NULL;
 -- 'Altering dbo.employee'
 ALTER TABLE dbo.employee ALTER COLUMN pub_id type char (8);
 ALTER TABLE dbo.employee ALTER COLUMN pub_id  set NOT NULL;
@@ -32,9 +32,9 @@ on dbo.authors.au_id = dbo.titleauthor.au_id;
 -- ''Creating dbo.publications'
 CREATE TABLE dbo.publications
 (
-Publication_id tid NOT NULL primary key,
+Publication_id dbo.tid NOT NULL primary key,
 title character varying (255) NOT NULL,
-pub_id char (8) NULL,
+pub_id dbo.tid NULL,
 notes character varying(4000) NULL,
 pubdate date NOT NULL DEFAULT (current_date)
 );
