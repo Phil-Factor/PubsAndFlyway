@@ -1,6 +1,9 @@
 ﻿#tell PowerShell where Flyway is. You need to change that to the correct path for your installation
 Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.8.1\flyway.cmd' -Scope local
 #specify the DSN, and create the ODVC connection
+
+$ProjectFolder = 'S:\work\Github\PubsAndFlyway\PubsPostgreSQL'
+$ErrorActionPreference = "Stop"
 $DSNName='PostgreSQL'
 $ConnPSQL = new-object system.data.odbc.odbcconnection
 $ConnPSQL.ConnectionString="DSN=$DSNName";
@@ -9,7 +12,13 @@ $ConnPSQL.Open()
 $parameters=(Get-OdbcDsn -name $DSNName).KeyValuePair|
  where {$_.Key -in @('Database','Servername','Username','Port','Password')} |
  foreach{@{$_.Key="$($_.Value.Trim())".Trim()}}
-$versionPath = "$($env:USERPROFILE)\Documents\GitHub\PolyGlotPubs\"
+@('Database','Servername','Port')|foreach{
+if ($parameters.$_ -ieq $NULL) {Write-Warning "the DSN didn't have the $_ "}
+}
+if ($parameters.Username -ne $null -and $parameters.Password -eq $null)
+    {Write-Warning "the DSN didn't have the password "}
+
+$versionPath = "$($env:USERPROFILE)\Documents\PolyGlotPubs\$DSNName\"
     #we create a path to where we store the model and reports for each version
     #This is separate from the project source as it is ephemeral
 
@@ -26,6 +35,8 @@ else
          "-user=$($parameters.Username)",
 		"-password=$($parameters.Password)")
 	}
+#if this works we're probably good to go
+Flyway @TheArgs info 
 
 #now we clean the database and do a new run of the migrations
 Flyway @TheArgs clean    # Drops all objects in the configured schemas for the Pubs database
@@ -51,6 +62,8 @@ as a JSON file to disk in the $versionpath we've just defined #>
         Get-ODBCSourceMetadata  $connpsql -WantsComparableObject $true |
         ConvertTo-JSON > "$:versionPath\$Version\Model.json"
     }
+    else 
+    {Throw "migration at level $version failed"}
 }
 
 #Now we can gnerate a report for every migration but the first
