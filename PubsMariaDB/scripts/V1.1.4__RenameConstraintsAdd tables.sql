@@ -73,7 +73,7 @@ price decimal(19,4) NULL,
 advance decimal(19,4) NULL,
 royalty int NULL,
 ytd_sales int NULL,
-PriceStartDate date NOT NULL DEFAULT (current_Date),
+PriceStartDate datetime NOT NULL DEFAULT (current_Date),
 PriceEndDate date NULL
 );
 
