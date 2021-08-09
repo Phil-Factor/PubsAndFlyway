@@ -1,4 +1,5 @@
-﻿<#
+﻿Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.8.1\flyway.cmd' -Scope local
+<#
 	.SYNOPSIS
 		Creates Flyway Parameter sets from a list of placeholders and parameters
 	
@@ -39,8 +40,8 @@ function Create-FlyWayParametersets
 		$ProjectName,
 		[Parameter(Mandatory = $true)]
 		$FlywayArray,
-        [Parameter(Mandatory = $False)]
-		$WhichToDo ='*' #meaning do all the database. You can do just one or a few
+		[Parameter(Mandatory = $False)]
+		$WhichToDo = '*' #meaning do all the database. You can do just one or a few
 	)
 	$TheDatabases = $FlywayArray | Where { $_.RDBMS -like $WhichToDo } | foreach {
 		if (!([string]::IsNullOrEmpty($_.UserID))) #then it is using integrated Credentials
@@ -123,12 +124,12 @@ $FlywayArray = @(
 	@{
 		'RDBMS' = 'PostgreSQL';
 		'driver' = 'postgresql';
-		'Server' = 'PentlowMillServ'; #the name or instance of SQL Server
+		'Server' = 'MyServer'; #the name or instance of SQL Server
 		'Database' = 'pubspolyglot'; #The name of the development database that you are using
 		'Password' = ''; #your password 
-		'UserID' = 'postgres'; # your userid 
+		'UserID' = 'MyUserID'; # your userid 
 		'port' = '5432'
-		'Schemas'='dbo,people'
+		'Schemas' = 'dbo,people'
 		'PlaceHolders' = @{
 			'currentDateTime' = 'CURRENT_DATE';
 			'schemaPrefix' = 'dbo.';
@@ -138,18 +139,18 @@ $FlywayArray = @(
 			'DateDatatype' = 'DATE';
 			'hexValueStart' = "decode('";
 			'hexValueEnd' = "','hex')";
-            'arg'='';
-            'viewStart'=''
-            'viewFinish'='';
-            'procStart' = '';
-            'emptyProcArgs' = '()';
-            'procBegin' = 'Language SQL as $$';
-            'procEnd' = '$$;';
-            'procFinish' = '';
+			'arg' = '';
+			'viewStart' = ''
+			'viewFinish' = '';
+			'procStart' = '';
+			'emptyProcArgs' = '()';
+			'procBegin' = 'Language SQL as $$';
+			'procEnd' = '$$;';
+			'procFinish' = '';
 			
 		}
 	},
-    @{
+	@{
 		'RDBMS' = 'SQLite';
 		'driver' = 'sqlite';
 		'Server' = ''; #the name or instance of SQL Server
@@ -157,8 +158,8 @@ $FlywayArray = @(
 		'Password' = ''; #your password 
 		'UserID' = ''; # your userid 
 		'port' = ''
-		'Schemas'=''
-        'PlaceHolders' = @{
+		'Schemas' = ''
+		'PlaceHolders' = @{
 			'currentDateTime' = "DATE('now')";
 			'schemaPrefix' = '';
 			'CLOB' = 'clob';
@@ -167,26 +168,26 @@ $FlywayArray = @(
 			'DateDatatype' = 'varchar(50)';
 			'hexValueStart' = "x'";
 			'hexValueEnd' = "'"
-            'arg'='';
-            'viewStart'=''
-            'viewFinish'='';
-            'procStart' = '/*'; #sqlite can't do procs
-            'emptyProcArgs' = '';
-            'procBegin' = '';
-            'procEnd' = '';
-            'procFinish' = '*/'; #sqlite can't do procs
+			'arg' = '';
+			'viewStart' = ''
+			'viewFinish' = '';
+			'procStart' = '/*'; #sqlite can't do procs
+			'emptyProcArgs' = '';
+			'procBegin' = '';
+			'procEnd' = '';
+			'procFinish' = '*/'; #sqlite can't do procs
 			
 		}
 	},
 	@{
 		'RDBMS' = 'SQLServer';
 		'driver' = 'sqlserver';
-		'Server' = 'PentlowMillServ'; #the name or instance of SQL Server
+		'Server' = 'MyServer'; #the name or instance of SQL Server
 		'Database' = 'pubsPolyglot'; #The name of the development database that you are using
 		'Password' = ''; #your password 
-		'UserID' = 'PhilFactor'; # your userid
+		'UserID' = 'MyUserID'; # your userid
 		'port' = '';
-        'Schemas'='dbo,people'
+		'Schemas' = 'dbo,people'
 		'PlaceHolders' = @{
 			'currentDateTime' = 'GetDate()';
 			'schemaPrefix' = 'dbo.';
@@ -196,26 +197,26 @@ $FlywayArray = @(
 			'autoIncrement' = 'INT NOT NULL IDENTITY primary key';
 			'hexValueStart' = "0x";
 			'hexValueEnd' = ""
-            'arg'='@';
-            'viewStart'='GO';
-            'viewFinish'='GO';
-            'procStart' = '--';
-            'emptyProcArgs' = '';
-            'procBegin' = 'as';
-            'procEnd' = '--';
-            'procFinish' = 'GO';
+			'arg' = '@';
+			'viewStart' = 'GO';
+			'viewFinish' = 'GO';
+			'procStart' = '--';
+			'emptyProcArgs' = '';
+			'procBegin' = 'as';
+			'procEnd' = '--';
+			'procFinish' = 'GO';
 		}
 	},
 	@{
 		'RDBMS' = 'MariaDB';
 		'driver' = 'mariadb';
-		'Server' = 'PentlowMillServ'; #the name or instance of SQL Server
+		'Server' = 'MyServer'; #the name or instance of SQL Server
 		'Database' = 'pubsPolyglot'; #The name of the development database that you are using
 		'Password' = ''; #your password 
-		'UserID' = 'root'; # your userid 
+		'UserID' = 'MyUserID'; # your userid 
 		'port' = '3307'
-        'Schemas'='pubsPolyglot'
-        	'PlaceHolders' = @{
+		'Schemas' = 'pubsPolyglot'
+		'PlaceHolders' = @{
 			'currentDateTime' = 'CURDATE()';
 			'schemaPrefix' = '';
 			'CLOB' = 'longtext';
@@ -224,40 +225,38 @@ $FlywayArray = @(
 			'autoIncrement' = 'int NOT NULL auto_increment primary key';
 			'hexValueStart' = "decode('";
 			'hexValueEnd' = "','hex')";
-            'arg'='';
-            'viewStart'='';
-            'viewFinish'='';
-           'procStart' = 'DELIMITER //';
-            'emptyProcArgs' = '()';
-           'procBegin' = 'Begin';
-            'procEnd' = 'end;';
-            'procFinish' = '//     DELIMITER ;';
-
+			'arg' = '';
+			'viewStart' = '';
+			'viewFinish' = '';
+			'procStart' = 'DELIMITER //';
+			'emptyProcArgs' = '()';
+			'procBegin' = 'Begin';
+			'procEnd' = 'end;';
+			'procFinish' = '//     DELIMITER ;';
+			
 		}
 	})
 
 
-Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.8.1\flyway.cmd' -Scope local
-
 Create-FlyWayParametersets `
-  -ProjectFolder 'S:\work\Github\PubsAndFlyway\PubsAgnostic' `
-  -ProjectDescription 'Experiment to use a single migration folder for several RDBMSs' `
-  -ProjectName 'PubsAgnostic' -FlywayArray $FlywayArray |foreach {
-    "... processing $($_.url)"
-    $Params=$_.args
-    Flyway @Params clean
-    $Result = Flyway @Params -outputType=json migrate | convertFrom-JSON
-    if ($Result.error -ne $null)
-    { write-warning $Result.error.message }
-    else # we report any migration
-    {
-        $Before=$result.initialSchemaVersion;
-        $After=$result.targetSchemaVersion;
-        if ([string]::IsNullOrEmpty($before)){$Before='empty'}
-	    if ([string]::IsNullOrEmpty($After)){$After=$Before}
-        if ($Before -ne $after)
-	    { "$($result.database) $($Result.operation)d $($Result.migrationsExecuted) version(s) from $before to $After" }
-        else
-           {'No migration was made'}
-    }
+						   -ProjectFolder 'PathToProject\PubsAndFlyway\PubsAgnostic' `
+						   -ProjectDescription 'Experiment to use a single migration folder for several RDBMSs' `
+						   -ProjectName 'PubsAgnostic' -FlywayArray $FlywayArray | foreach {
+	"... processing $($_.url)"
+	$Params = $_.args
+	Flyway @Params clean
+	$Result = Flyway @Params -outputType=json migrate | convertFrom-JSON
+	if ($Result.error -ne $null)
+	{ write-warning $Result.error.message }
+	else # we report any migration
+	{
+		$Before = $result.initialSchemaVersion;
+		$After = $result.targetSchemaVersion;
+		if ([string]::IsNullOrEmpty($before)) { $Before = 'empty' }
+		if ([string]::IsNullOrEmpty($After)) { $After = $Before }
+		if ($Before -ne $after)
+		{ "$($result.database) $($Result.operation)d $($Result.migrationsExecuted) version(s) from $before to $After" }
+		else
+		{ 'No migration was made' }
+	}
 }
