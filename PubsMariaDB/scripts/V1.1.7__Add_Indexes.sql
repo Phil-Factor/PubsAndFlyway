@@ -69,7 +69,7 @@ VALUES
   
 
 Delimiter $$
-DROP PROCEDURE IF EXISTS dbo.CommentPerRow $$
+DROP PROCEDURE IF EXISTS CommentPerRow $$
 
 CREATE PROCEDURE CommentPerRow()
 BEGIN
