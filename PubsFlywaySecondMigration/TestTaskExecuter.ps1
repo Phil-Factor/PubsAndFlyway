@@ -13,7 +13,16 @@ if ($executablepath -eq '')
 }
 if ([string]::IsNullOrEmpty($ExecutablePath)) { $ExecutablePath = $pwd }
 .("$executablepath\DatabaseBuildAndMigrateTasks.ps1")
-
+$DatabaseDetails=@{
+ 'server'='PentlowMillServ'; #the name of your sql server
+ 'database'='PubsTwo'; #the name of the database
+ 'version'=''; #the version
+ 'ProjectFolder'='S:\work\github\PubsAndFlyway\PubsFlywaySecondMigration\Scripts'
+ 'project'='Pubs'; #the name of your project
+ 'uid'='PhilFactor'; #optional
+ 'locations'=@{}; # for reporting file locations used
+ 'problems'=@{}; # for reporting any problems
+ 'warnings'=@{}} # for reporting any warnings
 
 $DatabaseDetails.problems=@{}
 Process-FlywayTasks $DatabaseDetails  @(
