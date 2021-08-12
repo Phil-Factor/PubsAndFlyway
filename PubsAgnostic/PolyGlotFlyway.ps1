@@ -1,4 +1,4 @@
-﻿Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.8.1\flyway.cmd' -Scope local
+﻿Set-Alias Flyway  $env:flyway -Scope local
 <#
 	.SYNOPSIS
 		Creates Flyway Parameter sets from a list of placeholders and parameters
@@ -20,6 +20,12 @@ as creating the Flyway parameters.
 	
 	.PARAMETER FlywayArray
 		The collection of data objects that describe each database
+
+	.PARAMETER WhichToDo
+        A wildcard to specify which of the whole collection you want to process
+
+	.PARAMETER $ConfigFile
+        Is this to create a config file rather than a list of parameters?. 
 	
 	.EXAMPLE
 				PS C:\> Create-FlyWayParametersets -ProjectFolder $value1 -ProjectDescription $value2
@@ -41,8 +47,15 @@ function Create-FlyWayParametersets
 		[Parameter(Mandatory = $true)]
 		$FlywayArray,
 		[Parameter(Mandatory = $False)]
-		$WhichToDo = '*' #meaning do all the database. You can do just one or a few
+		$WhichToDo = '*',
+		#meaning do all the database. You can do just one or a few
+
+		[Parameter(Mandatory = $False)]
+		$ConfigFile = $False #Change to $true if you are writing config files 
 	)
+	if ($ConfigFile) { $Dlmtr = ''; $Prefix = 'Flyway.' }
+	else { $Dlmtr = '"'; $Prefix = '-' }
+	
 	$TheDatabases = $FlywayArray | Where { $_.RDBMS -like $WhichToDo } | foreach {
 		if (!([string]::IsNullOrEmpty($_.UserID))) #then it is using integrated Credentials
 		{
@@ -98,18 +111,18 @@ function Create-FlyWayParametersets
 		}
 		# Now we need to deal with the rest of the values 
 		$FlArgs = @();
-		$FlArgs = @("-url=$URL",
-			"-user=$($_.UserID)",
-			"-password=$($_.Password)"
+		$FlArgs = @("$($Prefix)url=$URL",
+			"$($Prefix)user=$($_.UserID)",
+			"$($Prefix)password=$($_.Password)"
 		) # now add the global project-variables for all databases
-		$FlArgs += @("-locations=filesystem:$ProjectFolder\Scripts",
-			"-schemas=$($_.schemas)");
+		$FlArgs += @("$($Prefix)locations=filesystem:$ProjectFolder\Scripts",
+			"$($Prefix)schemas=$($_.schemas)");
 		$FlArgs += <# the project variables that we reference with placeholders #>
-		@("-placeholders.projectDescription=$ProjectDescription",
-			"-placeholders.projectName=$ProjectName") <# the project variables #>
+		@("$($Prefix)placeholders.projectDescription=$Dlmtr$ProjectDescription$Dlmtr",
+			"$($Prefix)placeholders.projectName=$Dlmtr$ProjectName$Dlmtr") <# the project variables #>
 		$placeholders = $_.PlaceHolders
 		$PlaceHolders.Keys | foreach{
-			$FlArgs += "-placeholders.$_=`"$($placeholders.$_)`""
+			$FlArgs += "$($Prefix)placeholders.$_=$Dlmtr$($placeholders.$_)$Dlmtr"
 		}
 		@{
 			'url' = $URL;
@@ -118,6 +131,7 @@ function Create-FlyWayParametersets
 	}
 	$TheDatabases
 }
+
 
 
 $FlywayArray = @(
@@ -237,11 +251,16 @@ $FlywayArray = @(
 		}
 	})
 
+$FlywayArray | convertto-json > '\\MillArchive\public\work\Github\PubsAndFlyway\PubsAgnostic\FlyWayJsonPlaceholders.json'
+
+
+<# an example of using the cmdlet to do a complete rebuild to all 
+databases specified in our $FlywayArray array #>
 
 Create-FlyWayParametersets `
-						   -ProjectFolder 'PathToProject\PubsAndFlyway\PubsAgnostic' `
-						   -ProjectDescription 'Experiment to use a single migration folder for several RDBMSs' `
-						   -ProjectName 'PubsAgnostic' -FlywayArray $FlywayArray | foreach {
+   -ProjectFolder 'PathToProject\PubsAndFlyway\PubsAgnostic' `
+   -ProjectDescription 'Experiment to use a single migration folder for several RDBMSs' `
+   -ProjectName 'PubsAgnostic' -FlywayArray $FlywayArray | foreach {
 	"... processing $($_.url)"
 	$Params = $_.args
 	Flyway @Params clean
@@ -260,3 +279,17 @@ Create-FlyWayParametersets `
 		{ 'No migration was made' }
 	}
 }
+
+<# an example of using the cmdlet to write a config file in a subdirectory of 
+the user home directory for each databases specified in our $FlywayArray array #>
+
+$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
+Create-FlyWayParametersets `
+	   -ProjectFolder 'S:\work\Github\PubsAndFlyway\PubsAgnostic' `
+	   -ProjectDescription 'Experiment to use a single migration folder for several RDBMSs' `
+	   -ProjectName 'PubsAgnostic' -FlywayArray $FlywayArray -ConfigFile $true | Foreach{
+	$TheName = ($_.url -split ':')[1]
+	$_.args > "$env:USERPROFILE\Documents\Databases\Flyway$TheName.conf"
+}
+
+
