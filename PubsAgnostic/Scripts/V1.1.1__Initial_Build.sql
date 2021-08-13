@@ -1,6 +1,5 @@
-/* Flyway generic Pubs build using SQL-92 syntax where possible
+﻿/* Flyway generic Pubs build using SQL-92 syntax where possible
 and using placeholders for any syntax that is database-specific.  
-
 'currentDateTime' the function used to give the current date
 'schemaPrefix' the schema prefix to use.(e.g. dbo. )
 'CLOB' the data type you use for text of indeterminate large size
@@ -186,7 +185,6 @@ begin
       16, 1, job_id, min_lvl, max_lvl)
    ROLLBACK TRANSACTION
 end
-
 */
 
 /*TitleView View */
@@ -274,15 +272,9 @@ ${procFinish}
 
 /*
 ALTER TABLE dbo.authors ADD CONSTRAINT CK__authors__au_id CHECK (au_id regexp '[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]');
-
 ALTER TABLE dbo.authors ADD CONSTRAINT CK__authors__zip CHECK (zip regexp '[0-9][0-9][0-9][0-9][0-9]');
-
 ALTER TABLE dbo.employee ADD CONSTRAINT CK_emp_id CHECK (emp_id regexp '[A-Z][A-Z][A-Z][1-9][0-9][0-9][0-9][0-9][FM]' OR emp_id regexp '[A-Z]-[A-Z][1-9][0-9][0-9][0-9][0-9][FM]');
-
 ALTER TABLE dbo.jobs ADD CONSTRAINT CK__jobs__min_lvl CHECK ((min_lvl>=(10)));
-
 ALTER TABLE dbo.jobs ADD CONSTRAINT CK__jobs__max_lvl CHECK ((max_lvl<=(250)));
-
 ALTER TABLE dbo.publishers ADD CONSTRAINT CK__publisher__pub CHECK ((pub_id='1756' OR pub_id='1622' OR pub_id='0877' OR pub_id='0736' OR pub_id='1389' OR pub_id regexp  '99[0-9][0-9]'));
 */
-
