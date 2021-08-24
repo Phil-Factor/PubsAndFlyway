@@ -53,7 +53,7 @@ function Create-FlyWayParametersets
 		[Parameter(Mandatory = $False)]
 		$ConfigFile = $False #Change to $true if you are writing config files 
 	)
-	if ($ConfigFile) { $Dlmtr = ''; $Prefix = 'Flyway.' }
+	if ($ConfigFile) { $Dlmtr = ''; $Prefix = 'flyway.' }
 	else { $Dlmtr = '"'; $Prefix = '-' }
 	
 	$TheDatabases = $FlywayArray | Where { $_.RDBMS -like $WhichToDo } | foreach {
@@ -279,7 +279,7 @@ Create-FlyWayParametersets `
 	}
 }
 
-<# an example of using the cmdlet to write a config file in a subdirectory of 
+<# as an example of using the cmdlet to write a config file in a subdirectory of 
 the user home directory for each databases specified in our $FlywayArray array #>
 
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
