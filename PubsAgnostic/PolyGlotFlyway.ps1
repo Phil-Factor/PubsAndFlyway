@@ -251,7 +251,6 @@ $FlywayArray = @(
 		}
 	})
 
-$FlywayArray | convertto-json > '\\MillArchive\public\work\Github\PubsAndFlyway\PubsAgnostic\FlyWayJsonPlaceholders.json'
 
 
 <# an example of using the cmdlet to do a complete rebuild to all 
@@ -289,7 +288,10 @@ Create-FlyWayParametersets `
 	   -ProjectDescription 'Experiment to use a single migration folder for several RDBMSs' `
 	   -ProjectName 'PubsAgnostic' -FlywayArray $FlywayArray -ConfigFile $true | Foreach{
 	$TheName = ($_.url -split ':')[1]
-	$_.args > "$env:USERPROFILE\Documents\Databases\Flyway$TheName.conf"
+    $outputPath="$env:USERPROFILE\Documents\Databases\Pubs$TheName" 
+    if (!(test-path -Path $outputPath -PathType Container))
+        {New-Item -ItemType Directory -Force -Path $outputPath|out-null}
+	$_.args > "$outputPath\flyway.conf"
 }
 
 
