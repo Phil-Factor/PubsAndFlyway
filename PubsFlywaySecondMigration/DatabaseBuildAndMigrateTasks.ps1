@@ -17,8 +17,29 @@ or to save the results of a SQL Call as a JSON file or other result. I have
 examples of SQL Code executed from a variable containing a query,  and from 
 a file. 
 
-They share a common data object (it
-is actually a hashTable) and which can be batched up into an array
+They share a common data object as a parameter. The parameter looks somewhat 
+like this but the routines don't all require them. They y check to see whether
+you've provided what is needed... It
+is actually a hashTable passed by reference. 
+Few of theseparameters  are needed for any one task, and some
+such as version and password are filled in as the hashtable is accessed.
+$DatabaseDetails = @{
+    'RDBMS'=''; # necessary for systems with several RDBMS on the same server
+	'server' = ''; #the name of your server
+    'schemas'='' # only needed if you are calling flyway
+	'database' = ''; #the name of the database
+	'version' = ''; #the version
+	'ProjectFolder' = ''; #where all the  files are. The script files are usually in a \scripts subdirectory
+    'project' = ''; #the name of your project
+    'projectDescription'=''; #a brief description of the project
+	'uid' = ''; #optional if you are using windows authewntication
+	'pwd' = ''; #only if you use a uid. Leave blank. we fill it in for you
+	'locations' = @{ }; # for reporting file locations used
+	'problems' = @{ }; # for reporting any big problems
+	'warnings' = @{ } # for reporting any issues
+} # for reporting any warnings
+
+These Scriptblocks can be batched up into an array
 and processed one by one. Some of them are utility chores such as extracting
 passwords from a relatively safe place, or fetching prepared parameters. There
 is one that merely formats the data. They are able to write errors or status
@@ -32,6 +53,27 @@ needs maintenance, it is very easy to pull it apart and run it interactively.
 The reason for using this design was to make it easy to choose what gets run 
 and in what order. 
 
+
+
+$DatabaseDetails = 
+    @{
+    'RDBMS'=''; #jdbc name. Only necessary for systems with several RDBMS on the same server
+    'ProjectFolder' = 'MyPathToTheFlywayFolder\PubsFlywaySecondMigration';
+    'ProjectDescription'='However you describe your project';
+    'schemas'='dbo' # only needed if you are calling flyway
+	'pwd' = ''; #Always leave blank
+	'uid' = 'MyUserName'; #leave blank unless you use credentials
+	'Database' = 'MyDatabase'; # fill this in please
+	'server' = 'MyServer'; # We need to know the server!
+	'port' = $null; #Not normally needed with SQL Server. add if required
+	#set to $null or leave it out if you want to let jdbc detect it 
+	'project' = $MyProject; # the name of the project-needed for saving files
+	'version' = ''; # current version of database - 
+	# leave blank unless you know
+	'locations' = @{ }; # for reporting file locations used
+	'problems' = @{ }; # for reporting any big problems
+	'warnings' = @{ } # for reporting any issues
+     }
 
  
 $CreateBuildScriptIfNecessary 
@@ -117,20 +159,22 @@ the comparison returns $null, then it means there has been an error. To access
 the right source folder for this database version, it needs $GetCurrentVersion
 to have been run beforehand in the chain of tasks
 
+$SaveDatabaseModelIfNecessary
+This saves 
 
 
 
  #>
-#we use SQLCMD to access SQL Server
+#we always use SQLCMD to access SQL Server
 $SQLCmdAlias = "$($env:ProgramFiles)\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\sqlcmd.exe"
-#We use SQL Code Guard for code analysis.
+#We use SQL Code Guard just for code analysis.
 $CodeGuardAlias= "${env:ProgramFiles(x86)}\SQLCodeGuard\SqlCodeGuard30.Cmd.exe"
 # We use SQL Compare to compare build script with database
 # and for generating scripts.
 $SQLCompareAlias= "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.exe"
 #where we want to store reports, the sub directories from the user area.
 $ReportLocation='Documents\GitHub\'# part of path from user area to project artefacts folder location 
-
+#This must be separate from the flyway project
 
 
 <# This scriptblock allows you to save and load the shared parameters for all these 
@@ -277,21 +321,16 @@ $FetchAnyRequiredPasswords = {
 	@('server') |
 	foreach{ if ($param1.$_ -in @($null,'')) { $problem = "no value for '$($_)'" } }
 	# some values, especially server names, have to be escaped when used in file paths.
-	<# this prevents the array being updated
-    if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
-	{
-		$EscapedValues = $param1.GetEnumerator() |
-		where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
-			@{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-' }
-		}
-		$EscapedValues | foreach{ $param1 += $_ }
-	}#>
-    $escapedServer=($Param1.server.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-'
+	$escapedServer=($Param1.server.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-'
 	# now we get the password if necessary
+  
 	if (!([string]::IsNullOrEmpty($param1.uid))) #then it is using SQL Server Credentials
 	{
-		# we see if we've got these stored already
-		$SqlEncryptedPasswordFile = "$env:USERPROFILE\$($param1.uid)-$($escapedServer).xml"
+		# we see if we've got these stored already. If specifying RDBMS, then use that.
+        if ([string]::IsNullOrEmpty($param1.RDBMS) )
+            {$SqlEncryptedPasswordFile="$env:USERPROFILE\$($param1.uid)-$($escapedServer).xml"}
+        else
+            {$SqlEncryptedPasswordFile="$env:USERPROFILE\$($param1.uid)-$($escapedServer)-$($RDBMS).xml"}
 		# test to see if we know about the password in a secure string stored in the user area
 		if (Test-Path -path $SqlEncryptedPasswordFile -PathType leaf)
 		{
@@ -442,7 +481,7 @@ $CheckCodeInMigrationFiles = {
 	@('ProjectFolder') |
 	foreach{ if ($param1.$_ -in @($null,'')) { $Problems += "no value for '$($_)'" } }
     $escapedProject=($Param1.project.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-'
-	dir "$($param1.projectFolder)\V*.sql" | foreach{
+	dir "$($param1.projectFolder)\scripts\V*.sql" | foreach{
 		$Thepath = $_.FullName;
 		$TheFile = $_.Name
 		$Theversion = ($_.Name -replace 'V(?<Version>[.\d]+).+', '${Version}')
@@ -502,8 +541,13 @@ table in the database. if there is no Flyway Data, then it returns a version of 
  #>
 $GetCurrentVersion = {
 	Param ($param1) # $GetCurrentVersion parameter is a hashtable 
- 
-	@('server', 'database') | foreach{ if ($param1.$_ -in @($null,'')) { write-error "no value for '$($_)'" } }
+	$Problems = @();   
+    $doit=$true;
+	@('server', 'database') | foreach{ 
+        if ($param1.$_ -in @($null,'')) { 
+          $Problems += "no value for '$($_)'";
+          $DoIt=$False;
+        } }
    <#
    if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
 	{
@@ -515,35 +559,39 @@ $GetCurrentVersion = {
 	}#>
 	#the alias must be set to the path of your installed version of SQL Compare
 	Set-Alias SQLCmd   $SQLCmdAlias -Scope local
-	$Problems = @();
+
 	#is that alias correct?
 	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
-	{ $Problems += 'The alias for SQLCMD is not set correctly yet' }	$Version = 'unknown'
+	{ $Problems += 'The alias for SQLCMD is not set correctly yet';$DoIt=$False; }	
+    $Version = 'unknown'
 	$query = 'SELECT [version] FROM dbo.flyway_schema_history where success=1'
-	$login = if ($param1.uid -ne $null)
-	{
-		$Myversions = sqlcmd -h -1 -S "$($param1.server)" -d "$($param1.database)" `
-							 -Q `"$query`" -U $($param1.uid) -P $($param1.pwd) -u -W
-		$arguments = "$($param1.server) -d $($param1.database) -U $($param1.uid) -P $($param1.pwd)"
-	}
-	else
-	{
-		$Myversions = sqlcmd -h -1 -S "$($param1.server)" -d "$($param1.database)" -Q `"$query`" -E -u -W
-		$arguments = "$($param1.server) -d $($param1.database)"
-	}
-	if (!($?) -or ($Myversions -eq $null))
-	{
-		#report a problem and send back the args for diagnosis (hint, only for script development)
-		$Problems += "sqlcmd failed with code $LASTEXITCODE, $Myversions, with parameters $arguments"
-	}
-	elseif (($Myversions -join '-') -like '*Invalid object name*')
-	{ $Version = '0.0.0' }
-	else
-	{
-		$Version = ($Myversions | where { $_ -like '*.*.*' } |
-			foreach { [version]$_ } |
-			Measure-Object -Maximum).Maximum.ToString()
-	}
+	if ($doit)
+        {
+        $login = if ($param1.uid -ne $null)
+	    {
+		    $Myversions = sqlcmd -h -1 -S "$($param1.server)" -d "$($param1.database)" `
+							     -Q `"$query`" -U $($param1.uid) -P $($param1.pwd) -u -W
+		    $arguments = "$($param1.server) -d $($param1.database) -U $($param1.uid) -P $($param1.pwd)"
+	    }
+	    else
+	    {
+		    $Myversions = sqlcmd -h -1 -S "$($param1.server)" -d "$($param1.database)" -Q `"$query`" -E -u -W
+		    $arguments = "$($param1.server) -d $($param1.database)"
+	    }
+	    if (!($?) -or ($Myversions -eq $null))
+	    {
+		    #report a problem and send back the args for diagnosis (hint, only for script development)
+		    $Problems += "sqlcmd failed with code $LASTEXITCODE, $Myversions, with parameters $arguments"
+	    }
+	    elseif (($Myversions -join '-') -like '*Invalid object name*')
+	    { $Version = '0.0.0' }
+	    else
+	    {
+		    $Version = ($Myversions | where { $_ -like '*.*.*' } |
+			    foreach { [version]$_ } |
+			    Measure-Object -Maximum).Maximum.ToString()
+	    }
+    }
 	if ($problems.Count -gt 0)
 	{
 		Write-error "$problems happened!";
@@ -1036,7 +1084,7 @@ columns. If you add or change tables, this can be subsequently used to update th
 AfterMigrate callback script
 for the documentation */#>
 $ExecuteTableDocumentationReport = {
-	Param ($param1) # $ExecuteTableSmellReport - parameter is a hashtable 
+	Param ($param1) # ExecuteTableDocumentationReport --dont delete this  
 
 
 	$problems = @()
@@ -1165,6 +1213,150 @@ SELECT @JSON
 	}
 }
 
+<#
+How to run this...
+$Details=@{
+'server'='<MyServer>'; #The Server name
+'database'='<MyDatabase>'; #The Database
+'uid'='<MyUID>';#The User ID
+'pwd'='<MyPassword>';# The password. This gets filled in if you request it
+'version'='<TheVersion>'; # TheCurrent Version. This gets filled in if you request it
+'project'='<NameOfTheProject>'; #Just the simple name of the project
+'ProjectFolder'='<PathwhereTheProjectIsLocated>';#parent the scripts directory
+'Warnings'=@{};                                                                                                                                                                                                            
+'Problems'=@{};                                                                                                                                                                                                            
+'Locations'=@{};  
+}
+
+
+$SaveDatabaseModelIfNecessary.Invoke($Details)
+if ($Details.locations.SaveDatabaseModelIfNecessary -ne $null)
+    {"Saved report in $($Details.locations.SaveDatabaseModelIfNecessary)"}
+elseif( $Details.Problems.SaveDatabaseModelIfNecessary -ne $null)
+    {"Error: $($Details.Problems.SaveDatabaseModelIfNecessary)"}
+else
+    {"Already saved"}
+
+
+This writes a JSON model of the database to a file that can be used subsequently
+to check for database version-drift or to create a narrative of changes for the
+flyway project between versions. */#>
+$SaveDatabaseModelIfNecessary = {
+	Param ($param1) # $SaveDatabaseModelIfNecessary - dont delete this
+	$problems = @() #none yet!
+	#check that you have the  entries that we need in the parameter table.
+	@('server', 'database', 'version', 'project', 'ProjectFolder') | foreach{
+		if ($param1.$_ -eq $null)
+		{ $Problems = "no value for '$($_)'" }
+	}
+	$routine = "$($param1.ProjectFolder)\TheGloopDatabaseModel.sql"
+	$escapedProject = ($Param1.project.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.', '-'
+	$MyDatabasePath = "$($env:USERPROFILE)\$ReportLocation$(
+		$EscapedProject)\$($param1.Version)\Reports"
+	if (-not (Test-Path -PathType Container $MyDatabasePath))
+	{
+		# does the path to the reports directory exist?
+		# not there, so we create the directory 
+		$null = New-Item -ItemType Directory -Force $MyDatabasePath;
+	}
+	$MyOutputReport = "$MyDatabasePath\DatabaseModel.JSON"
+	
+	#the alias must be set to the path of your installed version of SQLcmd
+	Set-Alias SQLCmd   $SQLCMDAlias -Scope local
+	#is that alias correct?
+	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
+	{ $Problems += 'The alias for SQLCMD is not set correctly yet' }
+	#The JSON Query must have 'SET NOCOUNT ON' and assign the result to 'NVARCHAR MAX' which you select from.
+	if (!([string]::IsNullOrEmpty($param1.uid)) -and ([string]::IsNullOrEmpty($param1.pwd)))
+	{ $problems += 'No password is specified' }
+	If (!(Test-Path -PathType Leaf  $MyOutputReport) -and ($problems.Count -eq 0)) # do the report once only
+	{
+		#make sure that the SQL File is there
+		if (!(test-path  $routine -PathType Leaf))
+		{ $Problems += "$Routine needs to be installed in he project'" }
+		else
+		{
+			$login = if ($Param1.uid -ne $null) #if we need to use credentials
+			{
+				$MyJSON = sqlcmd -S "$($param1.server)" -d "$($param1.database)" `
+								 -i $Routine -U $($param1.uid) -P $($param1.pwd) `
+								 -o "$($env:Temp)\Temp.json" -u -y0
+			}
+			else #we are using integrated security
+			{
+				$MyJSON = sqlcmd -S "$($param1.server)" -d "$($param1.database)" `
+								 -i $Routine -E -o "$($env:Temp)\Temp.json" -u -y0
+			}
+			if (!($?)) #sqlcmd error
+			{
+				Write-error "sqlcmd failed with code $LASTEXITCODE"
+			}
+			#we interpret the JSON into a model of the database.
+			if (!(test-path  "$($env:Temp)\Temp.json" -PathType Leaf))
+            {$Problems+="No '$($env:Temp)\Temp.json' output model file produced"}
+            else
+			{
+				$DatabaseModel = [IO.File]::ReadAllText("$($env:Temp)\Temp.json")
+				Remove-Item "$($env:Temp)\Temp.json"
+				try
+				{
+					$JSONMetadata = $DatabaseModel | ConvertFrom-json
+				}
+				catch
+				{
+					write-error "the SQL came up with an error $DatabaseModel"
+				}
+				
+				$dlm0 = ''; #the first level delimiter
+				$PSSourceCode = $JSONMetadata |
+				foreach{
+					$dlm1 = ''; #the second level delimiter
+					"$dlm0`"$($_.Schema -replace '"', '`"')`"= @{"
+					$_.types |
+					foreach{
+						$dlm2 = ''; #the third leveldelimiter
+						"    $dlm1`"$($_.type -replace '"', '`"')`"= @{"
+						$_.names |
+						foreach{
+							$dlm3 = ''; #the fourth-level delimiter
+							if ($_.attributes[0].attr[0].name -eq $null)
+							{ "      $dlm2`"$($_.Name -replace '"', '`"')`"= '' " }
+							else
+							{
+								"      $dlm2`"$($_.Name -replace '"', '`"')`"= @{"
+								$_.attributes | #where {$_.attr[0].name -ne $null}|
+								foreach{
+									$dlm4 = ''; #the fifth-level delimiter
+									"        $dlm3`"$($_.TheType -replace '"', '`"')`"= @("
+									$_.attr | #where {$_.name -ne $null}|
+									foreach{
+										"        $dlm4`"$($_.name -replace '"', '`"')`"";
+										$dlm4 = ','
+									}
+									"        )"
+									$dlm3 = ';'
+								}
+								"      }"
+							}
+							$dlm2 = ';'
+						}
+						"    }"
+						$dlm1 = ';'
+					}
+					"  }"
+					$dlm0 = ';'
+				}
+				$DataObject = Invoke-Expression  "@{$PSSourceCode}"
+				$dataObject | convertTo-json -depth 10 >$MyOutputReport
+			}
+			$Param1.Locations.'SaveDatabaseModelIfNecessary' = $MyOutputReport;
+		}
+	}
+	if ($problems.Count -gt 0)
+	{
+		$Param1.Problems.'SaveDatabaseModelIfNecessary' += $problems;
+	}
+}
 
 
 function Process-FlywayTasks

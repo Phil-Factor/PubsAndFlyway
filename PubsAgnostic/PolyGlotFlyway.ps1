@@ -1,297 +1,155 @@
-﻿Set-Alias Flyway  $env:flyway -Scope local
-<#
-	.SYNOPSIS
-		Creates Flyway Parameter sets from a list of placeholders and parameters
-	
-	.DESCRIPTION
-		A way of generating a whole lot of parameter sets that can be applied to Flyway. 
-Each object of the Flyway Array creates a set of Flyway parameters. 
-The routine automatically stores and inserts passwords, and runs various checks as well 
-as creating the Flyway parameters.
-	
-	.PARAMETER ProjectFolder
-		The path to the project folder containing the migrtation scripts
-	
-	.PARAMETER ProjectDescription
-		A description of the project
-	
-	.PARAMETER ProjectName
-		The name you give to the project
-	
-	.PARAMETER FlywayArray
-		The collection of data objects that describe each database
+﻿#create an alias for the commandline Flyway and SQLite, 
+Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.15.0\flyway.cmd' -Scope local
+Set-Alias SQLite  'C:\ProgramData\chocolatey\lib\SQLite\tools\sqlite-tools-win32-x86-3360000\sqlite3.exe' -Scope local
 
-	.PARAMETER WhichToDo
-        A wildcard to specify which of the whole collection you want to process
 
-	.PARAMETER $ConfigFile
-        Is this to create a config file rather than a list of parameters?. 
-	
-	.EXAMPLE
-				PS C:\> Create-FlyWayParametersets -ProjectFolder $value1 -ProjectDescription $value2
-	
-	.NOTES
-		Additional information about the function.
-#>
-function Create-FlyWayParametersets
+$WeCanContinue=$true
+$internalLog=@("$(Get-date)- started with $env:FLYWAY_USER and $env:FLYWAY_URL")
+#our regex for gathering variables from Flyway's URL
+$FlywayURLRegex =
+'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w]{1,20})(?<port>:[\d]{1,4}|)(;.+databaseName=|/)(?<database>[\w]{1,20})'
+$FlywayURLTruncationRegex ='jdbc:.{1,30}://.{1,30}(;|/)'
+#this FLYWAY_URL contains the current database, port and server so
+# it is worth grabbing
+$ConnectionInfo = $env:FLYWAY_URL #get the environment variable
+if ($ConnectionInfo -eq $null) #OMG... it isn't there for some reason
+{  $internalLog+='missing value for flyway url'; $WeCanContinue=$false; }
+
+$uid = $env:FLYWAY_USER;
+$ProjectFolder = $PWD.Path;
+
+if ($ConnectionInfo -imatch $FlywayURLRegex)
+{#we can extract all the info we need
+	$RDBMS = $matches['RDBMS'];
+	$server = $matches['server'];
+	$port = $matches['port'];
+	$database = $matches['database']
+}
+elseif ($ConnectionInfo -imatch 'jdbc:(?<RDBMS>[\w]{1,20}):(?<database>[\w:\\]{1,80})')
+{#no server or port
+	$RDBMS = $matches['RDBMS'];
+	$server = 'none';
+	$port = 'none';
+	$database = $matches['database']
+}
+else
+ {
+	$internalLog+='unmatched connection info'
+ }
+$internalLog+="RDBMS=$RDBMS, Server='$server' Port='$port' and Database= '$database'"
+if ($weCanContinue)
 {
-	[CmdletBinding()]
-	param
-	(
-		[Parameter(Mandatory = $true)]
-		$ProjectFolder,
-		[Parameter(Mandatory = $true)]
-		$ProjectDescription,
-		[Parameter(Mandatory = $true)]
-		$ProjectName,
-		[Parameter(Mandatory = $true)]
-		$FlywayArray,
-		[Parameter(Mandatory = $False)]
-		$WhichToDo = '*',
-		#meaning do all the database. You can do just one or a few
-
-		[Parameter(Mandatory = $False)]
-		$ConfigFile = $False #Change to $true if you are writing config files 
-	)
-	if ($ConfigFile) { $Dlmtr = ''; $Prefix = 'flyway.' }
-	else { $Dlmtr = '"'; $Prefix = '-' }
-	
-	$TheDatabases = $FlywayArray | Where { $_.RDBMS -like $WhichToDo } | foreach {
-		if (!([string]::IsNullOrEmpty($_.UserID))) #then it is using integrated Credentials
-		{
-			# we see if we've got these stored already
-			#if you change your password, you just delete the file
-			$SqlEncryptedPasswordFile = "$env:USERPROFILE\$($_.UserID)-$($_.Server)-$($_.RDBMS).xml"
-			# test to see if we know about the password in a secure string stored in the user area
-			if (Test-Path -path $SqlEncryptedPasswordFile -PathType leaf)
-			{
-				#has already got this set for this login so fetch it
-				$SqlCredentials = Import-CliXml $SqlEncryptedPasswordFile
-			}
-			else #then we have to ask the user for it (once only)
-			{
-				# hasn't got this set for this login
-				$aborted = $false #in case the user doesn't want to enter the password
-				$SqlCredentials = get-credential -Credential $_.UserID
-				# Save in the user area 
-				if ($SqlCredentials -ne $null) #in case the user aborted
-				{
-					$SqlCredentials | Export-CliXml -Path $SqlEncryptedPasswordFile
+# now we get the password if necessary
+if ($username -ne '' -and $RDBMS -ne 'sqlite') #then it is using Credentials
+{
+	# we see if we've got these stored already
+	$SqlEncryptedPasswordFile = "$env:USERPROFILE\$($uid)-$Server-$($RDBMS).xml"
+	# test to see if we know about the password in a secure string stored in the user area
+	if (Test-Path -path $SqlEncryptedPasswordFile -PathType leaf)
+	{
+		#has already got this set for this login so fetch it
+		$SqlCredentials = Import-CliXml $SqlEncryptedPasswordFile
+		
+	}
+	else #then we have to ask the user for it (once only)
+	{
+		# hasn't got this set for this login
+		$SqlCredentials = get-credential -Credential $uid
+		# Save in the user area 
+		$SqlCredentials | Export-CliXml -Path $SqlEncryptedPasswordFile
         <# Export-Clixml only exports encrypted credentials on Windows.
         otherwise it just offers some obfuscation but does not provide encryption. #>
-				}
-				else { $aborted = $True }
-			}
-			#so we can now provide the password
-			$_.Password = "$($SqlCredentials.GetNetworkCredential().password)";
-			$_.UserID = $($SqlCredentials.UserName)
-		}
-		$URL = switch ($_.driver) # we need to get the right format of URL
-		{
-			'sqlserver'  { 'jdbc:<driver>://<host>:<port>;databaseName=<database>' } #sqlServer
-			'mariadb'    { 'jdbc:<driver>://<host>:<port>/<database>' } # mariadb
-			'postgresql' { 'jdbc:<driver>://<host>:<port>/<database>' } #postgresql 
-			'sqlite'     { 'jdbc:sqlite:<database>' } #the database is a file address
-			default { 'unrecognised driver' }
-		}
-		@(#now we substitute the real values for the placeholders
-			@{ '<driver>' = $_.Driver }, @{ '<host>' = $_.Server },
-			@{
-				':<port>' = "$(if ($_.Port -eq '') { '' }
-					else { ':' + $_.port })"
-			},
-			@{
-				'<database>' = "$($_.Database)$(if ($_.driver -ne 'sqlite' -and ($_.UserID -eq '' -or
-							$_.Password -eq '')) { ';integratedSecurity=true' }
-					else { '' })" # integratedSecurity not for SQLITE! 
-			}
-		) | foreach{
-			# replace each macro/placeholder with its value
-			$URL = $URL.Replace($_.Keys[0], $_.Values[0])
-		}
-		# Now we need to deal with the rest of the values 
-		$FlArgs = @();
-		$FlArgs = @("$($Prefix)url=$URL",
-			"$($Prefix)user=$($_.UserID)",
-			"$($Prefix)password=$($_.Password)"
-		) # now add the global project-variables for all databases
-		$FlArgs += @("$($Prefix)locations=filesystem:$ProjectFolder\Scripts",
-			"$($Prefix)schemas=$($_.schemas)");
-		$FlArgs += <# the project variables that we reference with placeholders #>
-		@("$($Prefix)placeholders.projectDescription=$Dlmtr$ProjectDescription$Dlmtr",
-			"$($Prefix)placeholders.projectName=$Dlmtr$ProjectName$Dlmtr") <# the project variables #>
-		$placeholders = $_.PlaceHolders
-		$PlaceHolders.Keys | foreach{
-			$FlArgs += "$($Prefix)placeholders.$_=$Dlmtr$($placeholders.$_)$Dlmtr"
-		}
-		@{
-			'url' = $URL;
-			'args' = $FLArgs;
-		}
 	}
-	$TheDatabases
+    $FlyWayArgs =
+    @("-url=$ConnectionInfo", 
+	"-locations=filesystem:$PWD", <# the migration folder #>
+	"-user=$($SqlCredentials.UserName)", 
+	"-password=$($SqlCredentials.GetNetworkCredential().password)")
 }
+else
+{
+ $FlyWayArgs=
+    @("-url=$($ConnectionInfo)(if $RDBMS -eq 'sqlserver'){'integratedSecurity=true'}else {''})".
+      "-locations=filesystem:$PWD")<# the migration folder #>
+}
+$internalLog+="running Flyway with $FlyWayArgs"
 
+$internalLog|foreach{write-warning "$_"}
 
-
-$FlywayArray = @(
-	@{
-		'RDBMS' = 'PostgreSQL';
-		'driver' = 'postgresql';
-		'Server' = 'MyServer'; #the name or instance of SQL Server
-		'Database' = 'pubspolyglot'; #The name of the development database that you are using
-		'Password' = ''; #your password 
-		'UserID' = 'MyUserID'; # your userid 
-		'port' = '5432'
-		'Schemas' = 'dbo,people'
-		'PlaceHolders' = @{
-			'currentDateTime' = 'CURRENT_DATE';
-			'schemaPrefix' = 'dbo.';
-			'CLOB' = 'TEXT';
-			'BLOB' = 'BYTEA';
-			'autoIncrement' = 'INT NOT NULL GENERATED ALWAYS AS IDENTITY primary key';
-			'DateDatatype' = 'DATE';
-			'hexValueStart' = "decode('";
-			'hexValueEnd' = "','hex')";
-			'arg' = '';
-			'viewStart' = ''
-			'viewFinish' = '';
-			'procStart' = '';
-			'emptyProcArgs' = '()';
-			'procBegin' = 'Language SQL as $$';
-			'procEnd' = '$$;';
-			'procFinish' = '';
-			
-		}
-	},
-	@{
-		'RDBMS' = 'SQLite';
-		'driver' = 'sqlite';
-		'Server' = ''; #the name or instance of SQL Server
-		'Database' = 'C:\Users\andre\sqlite\PubsPolyglot.sqlite3'; #The name of the development database that you are using
-		'Password' = ''; #your password 
-		'UserID' = ''; # your userid 
-		'port' = ''
-		'Schemas' = ''
-		'PlaceHolders' = @{
-			'currentDateTime' = "DATE('now')";
-			'schemaPrefix' = '';
-			'CLOB' = 'clob';
-			'BLOB' = 'blob';
-			'autoIncrement' = 'INTEGER PRIMARY KEY autoincrement';
-			'DateDatatype' = 'varchar(50)';
-			'hexValueStart' = "x'";
-			'hexValueEnd' = "'"
-			'arg' = '';
-			'viewStart' = ''
-			'viewFinish' = '';
-			'procStart' = '/*'; #sqlite can't do procs
-			'emptyProcArgs' = '';
-			'procBegin' = '';
-			'procEnd' = '';
-			'procFinish' = '*/'; #sqlite can't do procs
-			
-		}
-	},
-	@{
-		'RDBMS' = 'SQLServer';
-		'driver' = 'sqlserver';
-		'Server' = 'MyServer'; #the name or instance of SQL Server
-		'Database' = 'pubsPolyglot'; #The name of the development database that you are using
-		'Password' = ''; #your password 
-		'UserID' = 'MyUserID'; # your userid
-		'port' = '';
-		'Schemas' = 'dbo,people'
-		'PlaceHolders' = @{
-			'currentDateTime' = 'GetDate()';
-			'schemaPrefix' = 'dbo.';
-			'CLOB' = 'NVARCHAR(MAX)';
-			'BLOB' = 'varbinary(MAX)';
-			'dateDatatype' = 'DateTime2';
-			'autoIncrement' = 'INT NOT NULL IDENTITY primary key';
-			'hexValueStart' = "0x";
-			'hexValueEnd' = ""
-			'arg' = '@';
-			'viewStart' = 'GO';
-			'viewFinish' = 'GO';
-			'procStart' = '--';
-			'emptyProcArgs' = '';
-			'procBegin' = 'as';
-			'procEnd' = '--';
-			'procFinish' = 'GO';
-		}
-	},
-	@{
-		'RDBMS' = 'MariaDB';
-		'driver' = 'mariadb';
-		'Server' = 'MyServer'; #the name or instance of SQL Server
-		'Database' = 'pubsPolyglot'; #The name of the development database that you are using
-		'Password' = ''; #your password 
-		'UserID' = 'MyUserID'; # your userid 
-		'port' = '3307'
-		'Schemas' = 'pubsPolyglot'
-		'PlaceHolders' = @{
-			'currentDateTime' = 'CURDATE()';
-			'schemaPrefix' = '';
-			'CLOB' = 'longtext';
-			'BLOB' = 'longblob';
-			'dateDatatype' = 'DateTime';
-			'autoIncrement' = 'int NOT NULL auto_increment primary key';
-			'hexValueStart' = "decode('";
-			'hexValueEnd' = "','hex')";
-			'arg' = '';
-			'viewStart' = '';
-			'viewFinish' = '';
-			'procStart' = 'DELIMITER //';
-			'emptyProcArgs' = '()';
-			'procBegin' = 'Begin';
-			'procEnd' = 'end;';
-			'procFinish' = '//     DELIMITER ;';
-			
-		}
-	})
-
-
-
-<# an example of using the cmdlet to do a complete rebuild to all 
-databases specified in our $FlywayArray array #>
-
-Create-FlyWayParametersets `
-   -ProjectFolder 'PathToProject\PubsAndFlyway\PubsAgnostic' `
-   -ProjectDescription 'Experiment to use a single migration folder for several RDBMSs' `
-   -ProjectName 'PubsAgnostic' -FlywayArray $FlywayArray | foreach {
-	"... processing $($_.url)"
-	$Params = $_.args
-	Flyway @Params clean
-	$Result = Flyway @Params -outputType=json migrate | convertFrom-JSON
-	if ($Result.error -ne $null)
-	{ write-warning $Result.error.message }
-	else # we report any migration
-	{
-		$Before = $result.initialSchemaVersion;
-		$After = $result.targetSchemaVersion;
-		if ([string]::IsNullOrEmpty($before)) { $Before = 'empty' }
-		if ([string]::IsNullOrEmpty($After)) { $After = $Before }
-		if ($Before -ne $after)
-		{ "$($result.database) $($Result.operation)d $($Result.migrationsExecuted) version(s) from $before to $After" }
-		else
-		{ 'No migration was made' }
+#get a JSON report of the history. We only want the record for the current version
+$report = Flyway info  @FlywayArgs -outputType=json | convertFrom-json
+if ($report.error -ne $null) #if an error was reported by Flyway
+{ #if an error (usually bad parameters) error out.
+	$report.error | foreach { $internalLog+= "$($_.errorCode): $($_.message)" }
+} 
+if ($report.allSchemasEmpty) #if it is an empty database
+{ $internalLog+= "all schemas of $database are empty. No version has been created here" }
+else
+{ #looking good, so first get the paramaters that are not specific to the version
+	$RecordOfCurrentVersion = [pscustomobject]@{
+		# get the global variables
+		'Database' = $report.database;
+		'Server' = $server;
+        'RDBMS'  = $RDBMS;
+		'Schema names' = $report.schemaName;
+		'Flyway Version' = $report.flywayVersion;
 	}
+} # now add all the values from the record for the current version
+$Report.migrations |
+   where { $_.version -eq $Report.schemaVersion } | foreach{
+	  $rec = $_; #remember this for gettinmg it's value
+	  $rec | gm -MemberType NoteProperty
+} | foreach{ # do each key/value pair in turn
+	$RecordOfCurrentVersion | 
+      Add-Member -MemberType NoteProperty -Name $_.Name -Value $Rec.($_.Name)
 }
+if ($RecordOfCurrentVersion.state -ne 'Success')
+    { $internalLog += "is  '$pwd' the correct project folder?"}
+#now all we have to do is to write it into the database if the record
+#does not already exist
 
-<# as an example of using the cmdlet to write a config file in a subdirectory of 
-the user home directory for each databases specified in our $FlywayArray array #>
+#in this case, we have only one record but we'll use a pipeline
+#just for convenience.
+$RecordOfCurrentVersion| foreach{
+sqlite '..\flywayHistory.db' "
+CREATE TABLE IF NOT EXISTS 
+Versions(
+    Database Varchar(80),
+    Server Varchar(80),
+    RDBMS  Varchar(20),
+    Schema_names Varchar(200),
+    Flyway_Version Varchar(20),
+    category Varchar(80),
+    description Varchar(80),
+    executionTime int,
+    filepath  Varchar(200),
+    installedBy Varchar(80),
+    installedOn Varchar(25),
+    installedOnUTC Varchar(25),
+    state Varchar(80),
+    type Varchar(10),
+    undoable Varchar(5),
+    version Varchar(80),
+    PRIMARY KEY (Database, Server, RDBMS, Version))
+;
+INSERT INTO Versions( Database, Server, RDBMS, Schema_names,
+Flyway_Version, category, description, executionTime,
+filepath, installedBy, installedOn, installedOnUTC,
+state, type, undoable, version) 
+SELECT '$($_.Database)', '$($_.Server)', '$($_.RDBMS)', 
+  '$($_.'Schema names')', '$($_.'Flyway Version')', '$($_.category)',
+  '$($_.description)', '$($_.executionTime)', '$($_.filepath)',
+  '$($_.installedBy)', '$($_.installedOn)', '$($_.installedOnUTC)',
+  '$($_.state)', '$($_.type)', '$($_.undoable)', '$($_.version)'
+WHERE NOT EXISTS(SELECT 1 FROM Versions
+        WHERE Database='$($_.Database)' AND Server= '$($_.Server)' 
+        AND RDBMS= '$($_.RDBMS)' AND version = '$($_.Version)'); 
+"  .exit
+}
+}
+else
+{$internalLog+="$(Get-date)- had to abandon reporting"}
 
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
-Create-FlyWayParametersets `
-	   -ProjectFolder 'S:\work\Github\PubsAndFlyway\PubsAgnostic' `
-	   -ProjectDescription 'Experiment to use a single migration folder for several RDBMSs' `
-	   -ProjectName 'PubsAgnostic' -FlywayArray $FlywayArray -ConfigFile $true | Foreach{
-	$TheName = ($_.url -split ':')[1]
-    $outputPath="$env:USERPROFILE\Documents\Databases\Pubs$TheName" 
-    if (!(test-path -Path $outputPath -PathType Container))
-        {New-Item -ItemType Directory -Force -Path $outputPath|out-null}
-	$_.args > "$outputPath\flyway.conf"
-}
-
-
+$internalLog|foreach{ "Logged $_"}
+$internalLog|foreach{$_ >> "$(Split-Path  $PWD -Parent)\Usage.log"}
