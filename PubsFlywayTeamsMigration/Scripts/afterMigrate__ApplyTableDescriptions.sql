@@ -281,7 +281,7 @@ DECLARE @JSONTablesAndColumns NVARCHAR(MAX) =
    {
       "TableObjectName":"Customer.AddressType",
       "Type":"user table",
-      "Description":" the  way that a particular customer is using the address (e.g. Home, Office, hotel etc ",
+      "Description":" the Â way that a particular customer is usingÂ the address (e.g. Home, Office, hotel etc ",
       "TheColumns":{
          "TypeOfAddress":"description of the type of address",
          "ModifiedDate":"when was this record LAST modified"
@@ -290,7 +290,7 @@ DECLARE @JSONTablesAndColumns NVARCHAR(MAX) =
    {
       "TableObjectName":"Customer.Abode",
       "Type":"user table",
-      "Description":" an abode describes the association has with an address and  the period of time when the person had that association",
+      "Description":" an abode describes the association has with anÂ address and Â the period of time when the person had that association",
       "TheColumns":{
          "Abode_ID":"the surrogate key for the place to which the person is associated",
          "Person_id":"the id of the person",

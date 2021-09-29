@@ -86,7 +86,7 @@ IF @@ERROR <> 0 SET NOEXEC ON
 GO
 PRINT N'Creating primary key [PK__discount__63D7679C0CEEA6FF] on [dbo].[discounts]'
 GO
-ALTER TABLE [dbo].[discounts] ADD PRIMARY KEY CLUSTERED  ([Discount_id])
+ALTER TABLE [dbo].[discounts] ADD CONSTRAINT PK_Discounts PRIMARY KEY CLUSTERED  ([Discount_id])
 GO
 IF @@ERROR <> 0 SET NOEXEC ON
 GO
@@ -169,7 +169,7 @@ IF @@ERROR <> 0 SET NOEXEC ON
 GO
 PRINT N'Creating primary key [PK__roysched__87691CF8BD660B81] on [dbo].[roysched]'
 GO
-ALTER TABLE [dbo].[roysched] ADD PRIMARY KEY CLUSTERED  ([roysched_id])
+ALTER TABLE [dbo].[roysched] ADD CONSTRAINT PK_Roysched PRIMARY KEY CLUSTERED  ([roysched_id])
 GO
 IF @@ERROR <> 0 SET NOEXEC ON
 GO

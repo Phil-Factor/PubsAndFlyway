@@ -1512,7 +1512,7 @@ GO
 PRINT 'Now at the inserts to jobs ....';
 
 GO
-
+DBCC CHECKIDENT ('jobs', RESEED, 1)
 INSERT jobs (job_desc, min_lvl, max_lvl)
 Values
 ( 'New Hire - Job not specified', 10, 10 ), 
