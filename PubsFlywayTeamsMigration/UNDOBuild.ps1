@@ -40,7 +40,7 @@ if ($username -ne '') #then it is using SQL Server Credentials
         <# Export-Clixml only exports encrypted credentials on Windows.
         otherwise it just offers some obfuscation but does not provide encryption. #>
 	}
-	$FlyWayArgs =
+	$FlywayUndoArgs =
 	@("-url=jdbc:sqlserver://$($Server):$port;databaseName=$Database",
 		"-locations=filesystem:$ProjectFolder\Scripts", <# the migration folder #>
 		"-user=$($SqlCredentials.UserName)",
@@ -52,18 +52,17 @@ if ($username -ne '') #then it is using SQL Server Credentials
 }
 else
 {
-	$FlyWayArgs =
+	$FlywayUndoArgs =
 	@("-url=jdbc:sqlserver://$($Server):$port;databaseName=$Database;integratedSecurity=true".
 		"-locations=filesystem:$ProjectFolder\Scripts")<# the migration folder #>
 	$SQLCmdArgs = @{ 'Server' = $Server; 'Database' = $Database }
 }
-$FlyWayArgs += <# the project variables that we reference with placeholders #>
+$FlywayUndoArgs += <# the project variables that we reference with placeholders #>
 @(
 	"-schemas=dbo,Classic,people",
 	"-placeholders.schemas=dbo,Classic,people", #This isn't passed to callbacks otherwise
 	"-placeholders.projectDescription=$ProjectDescription",
 	"-placeholders.projectName=$ProjectName")
-
 
 <# if your install of the SQL Server utilities has added the environment PATH variable then
 you don't need this #>
@@ -90,9 +89,9 @@ connection. We are going to access the server via flyway and so only want one co
 		$response = [IO.File]::ReadAllText($TempFile);
 		#Remove-Item $TempFile
 		if ($response -like 'Msg*')
-		{ "[{`"Error`":`"$($TheArgs.database) says $Response'`"}]" }
+		{ write-error "$($TheArgs.database) says $Response" }
 		elseif ($response -like 'SqlCmd*')
-		{ "[{`"Error`":`"SQLCMD says $Response'`"}]" }
+		{ write-error "SQLCMD says $Response" }
 		elseif ($response -like 'NULL*')
 		{ '' }
 		else
@@ -103,11 +102,12 @@ connection. We are going to access the server via flyway and so only want one co
 #>
 $ServerVersion = $GetdataFromSQLCMD.Invoke($SQLCmdArgs, "
  Select  Cast(ParseName ( Cast(ServerProperty ('productversion') AS VARCHAR(20)), 4) AS INT)")
+
 [int]$VersionNumber = $ServerVersion[0]
 
 if ($VersionNumber -ne $null)
 {
-	$FlyWayArgs +=
+	$FlywayUndoArgs +=
 	@("-placeholders.canDoJSON=$(if ($VersionNumber -ge 13) { 'true' }
 			else { 'false' })",
 		"-placeholders.canDoStringAgg=$(if ($VersionNumber -ge 14) { 'true' }
@@ -115,9 +115,9 @@ if ($VersionNumber -ne $null)
 }
 cd "$ProjectFolder\scripts"
 
-
 #if this works we're probably good to go
 
-Flyway @FlyWayArgs info
-Flyway @FlywayArgs clean
-Flyway @FlyWayArgs migrate 
+Flyway @FlywayUndoArgs info 
+Flyway @FlywayUndoArgs clean 
+Flyway @FlywayUndoArgs migrate '-target=1.1.9'
+Flyway @FlywayUndoArgs undo '-target=1.1.3'
