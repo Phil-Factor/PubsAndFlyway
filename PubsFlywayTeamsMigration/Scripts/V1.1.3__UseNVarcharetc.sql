@@ -6,6 +6,7 @@ GO
 SET XACT_ABORT ON
 GO
 PRINT N'Dropping foreign keys from [dbo].[sales]'
+SELECT * FROM sys.objects WHERE name LIKE 'FK__sales%'
 GO
 ALTER TABLE [dbo].[sales] DROP CONSTRAINT [FK__sales__stor_id__1273C1CD]
 GO

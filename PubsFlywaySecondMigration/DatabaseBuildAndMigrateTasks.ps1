@@ -160,7 +160,9 @@ the right source folder for this database version, it needs $GetCurrentVersion
 to have been run beforehand in the chain of tasks
 
 $SaveDatabaseModelIfNecessary
-This saves 
+This writes a JSON model of the database to a file that can be used subsequently
+to check for database version-drift or to create a narrative of changes for the
+flyway project between versions.
 
 
 
@@ -548,15 +550,6 @@ $GetCurrentVersion = {
           $Problems += "no value for '$($_)'";
           $DoIt=$False;
         } }
-   <#
-   if ($param1.Escapedserver -eq $null) #check that escapedValues are in place
-	{
-		$EscapedValues = $param1.GetEnumerator() |
-		where { $_.Name -in ('server', 'Database', 'Project') } | foreach{
-			@{ "Escaped$($_.Name)" = ($_.Value.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') }
-		}
-		$EscapedValues | foreach{ $param1 += $_ }
-	}#>
 	#the alias must be set to the path of your installed version of SQL Compare
 	Set-Alias SQLCmd   $SQLCmdAlias -Scope local
 
@@ -564,33 +557,31 @@ $GetCurrentVersion = {
 	if (!(test-path  ((Get-alias -Name SQLCmd).definition) -PathType Leaf))
 	{ $Problems += 'The alias for SQLCMD is not set correctly yet';$DoIt=$False; }	
     $Version = 'unknown'
-	$query = 'SELECT [version] FROM dbo.flyway_schema_history where success=1'
+	$query = 'SELECT version from dbo.flyway_schema_history WHERE installed_rank=(
+        SELECT Max(installed_rank) from dbo.flyway_schema_history WHERE success=1)'
 	if ($doit)
         {
         $login = if ($param1.uid -ne $null)
 	    {
-		    $Myversions = sqlcmd -h -1 -S "$($param1.server)" -d "$($param1.database)" `
+		    $MyVersion = sqlcmd -h -1 -S "$($param1.server)" -d "$($param1.database)" `
 							     -Q `"$query`" -U $($param1.uid) -P $($param1.pwd) -u -W
 		    $arguments = "$($param1.server) -d $($param1.database) -U $($param1.uid) -P $($param1.pwd)"
 	    }
 	    else
 	    {
-		    $Myversions = sqlcmd -h -1 -S "$($param1.server)" -d "$($param1.database)" -Q `"$query`" -E -u -W
+		    $MyVersion = sqlcmd -h -1 -S "$($param1.server)" -d "$($param1.database)" -Q `"$query`" -E -u -W
 		    $arguments = "$($param1.server) -d $($param1.database)"
 	    }
-	    if (!($?) -or ($Myversions -eq $null))
+	    if (!($?) -or ($Myversion -eq $null))
 	    {
 		    #report a problem and send back the args for diagnosis (hint, only for script development)
 		    $Problems += "sqlcmd failed with code $LASTEXITCODE, $Myversions, with parameters $arguments"
 	    }
-	    elseif (($Myversions -join '-') -like '*Invalid object name*')
+	    elseif (($MyVersion[0] -join '-') -like '*Invalid object name*')
 	    { $Version = '0.0.0' }
-	    else
-	    {
-		    $Version = ($Myversions | where { $_ -like '*.*.*' } |
-			    foreach { [version]$_ } |
-			    Measure-Object -Maximum).Maximum.ToString()
-	    }
+        else
+            {$Version=$MyVersion[0]}
+	   
     }
 	if ($problems.Count -gt 0)
 	{

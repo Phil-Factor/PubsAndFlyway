@@ -44,15 +44,13 @@ PRINT N'Dropping constraints from [dbo].[discounts]';
 GO
 
 IF Object_Id ('PK_discounts') IS NOT NULL
-  ALTER TABLE [dbo].[discounts]
-  DROP CONSTRAINT [PK_discounts];
+  ALTER TABLE [dbo].[discounts] DROP CONSTRAINT [PK_discounts];
 GO
 
 PRINT N'Dropping constraints from [dbo].[roysched]';
 GO
 IF Object_Id ('[PK_roysched]', 'PK') IS NOT NULL
-  ALTER TABLE [dbo].[roysched]
-  DROP CONSTRAINT [PK_roysched];
+  ALTER TABLE [dbo].[roysched] DROP CONSTRAINT [PK_roysched];
 GO
 PRINT N'Dropping constraints from [dbo].[sales]';
 GO
@@ -81,8 +79,7 @@ IF EXISTS
   (SELECT *
      FROM sys.indexes
      WHERE
-     object_id = Object_Id ('[dbo].[authors]')
- AND name = 'aunmind')
+     object_id = Object_Id ('[dbo].[authors]') AND name = 'aunmind')
   DROP INDEX [aunmind] ON [dbo].[authors];
 GO
 PRINT N'Dropping index [titleind] from [dbo].[titles]';
@@ -91,8 +88,7 @@ IF EXISTS
   (SELECT *
      FROM sys.indexes
      WHERE
-     object_id = Object_Id ('[dbo].[titles]')
- AND name = 'titleind')
+     object_id = Object_Id ('[dbo].[titles]') AND name = 'titleind')
   DROP INDEX [titleind] ON [dbo].[titles];
 GO
 PRINT N'Dropping index [employee_ind] from [dbo].[employee]';
@@ -101,8 +97,7 @@ IF EXISTS
   (SELECT *
      FROM sys.indexes
      WHERE
-     object_id = Object_Id ('[dbo].[employee]')
- AND name = 'employee_ind')
+     object_id = Object_Id ('[dbo].[employee]') AND name = 'employee_ind')
   DROP INDEX [employee_ind] ON [dbo].[employee];
 GO
 PRINT N'Altering [dbo].[authors]';
@@ -388,17 +383,18 @@ ELSE IF NOT (@emp_lvl BETWEEN @min_lvl AND @max_lvl)
          ROLLBACK TRANSACTION;
        END;
 GO
-PRINT N'Altering extended properties';
+IF Object_Id ('[FK__sales__stor_id__1273C1CD]', 'F') IS NULL
+  ALTER TABLE [dbo].[sales]
+  ADD CONSTRAINT [FK__sales__stor_id__1273C1CD]
+      FOREIGN KEY ([stor_id])
+      REFERENCES [dbo].[stores] ([stor_id]);
 GO
-IF EXISTS
-	(
-	SELECT fn_listextendedproperty.name, fn_listextendedproperty.value
-	FROM sys.fn_listextendedproperty(
-      N'Database_Info',
-      NULL, NULL, NULL, NULL, NULL, NULL
-      )
-    )
-EXEC sp_updateextendedproperty N'Database_Info',
-                               N'[{"Name":"PubsTwo","Version":"1.1.2","Description":"A sample project to demonstrate Flyway, using the old Pubs database","Project":"Publications","Modified":"2021-09-01T13:50:29.727","by":"PhilFactor"}]',
-                               NULL, NULL, NULL, NULL, NULL, NULL;
-GO
+IF Object_Id ('DF__publisher__count__3D5E1FD2', 'D') IS NOT NULL
+  ALTER TABLE [dbo].[publishers]
+  DROP CONSTRAINT [DF__publisher__count__3D5E1FD2];
+IF Object_Id ('[DF__publisher__count__0519C6AF', 'D') IS NULL
+  ALTER TABLE [dbo].[publishers]
+  ADD CONSTRAINT [DF__publisher__count__0519C6AF]
+      DEFAULT ('USA') FOR [country];
+IF Col_Length ('[dbo].[roysched]', 'Roysched_id') IS NOT NULL
+  ALTER TABLE [dbo].[roysched] DROP COLUMN roysched_id;
