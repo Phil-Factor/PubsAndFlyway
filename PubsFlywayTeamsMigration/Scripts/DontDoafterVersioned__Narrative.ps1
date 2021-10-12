@@ -1,13 +1,20 @@
-﻿#run the library script, assuming it is in the project directory containing the script directory
+﻿# run the library script, assuming it is in the project directory containing the script directory
 . "..\DatabaseBuildAndMigrateTasks.ps1"
+# Before running this, you will need to have TheGloopDatabaseModel.sql in the same directory as 
+# DatabaseBuildAndMigrateTasks.ps1
 
 <#
-$env:FP__errorLogFile__='TheErrorlog'
-$env:FP__reportLogFile__='TheReportLog'
-$env:FP__projectName__='TheProjectName'
-$env:FP__projectFolder__='TheProjectFolder'
-$env:FLYWAY_USER='Fred'
-$env:FLYWAY_URL='jdbc:sqlserver://MyServer:1433;maxResultBuffer=-1;sendTemporalDataTypesAsStringForBulkCopy=true;delayLoadingLobs=true;useFmtOnly=false;useBulkCopyForBatchInsert=false;cancelQueryTimeout=-1;sslProtocol=TLS;jaasConfigurationName=SQLJDBCDriver;statementPoolingCacheSize=0;serverPreparedStatementDiscardThreshold=10;enablePrepareOnFirstPreparedStatementCall=false;fips=false;socketTimeout=0;authentication=NotSpecified;authenticationScheme=nativeAuthentication;xopenStates=false;sendTimeAsDatetime=true;trustStoreType=JKS;trustServerCertificate=false;TransparentNetworkIPResolution=true;serverNameAsACE=false;sendStringParametersAsUnicode=true;selectMethod=direct;responseBuffering=adaptive;queryTimeout=-1;packetSize=8000;multiSubnetFailover=false;loginTimeout=15;lockTimeout=-1;lastUpdateCount=true;encrypt=false;disableStatementPooling=true;databaseName=PubsTwo;columnEncryptionSetting=Disabled;applicationName=Microsoft JDBC Driver for SQL Server;applicationIntent=readwrite;'
+FLYWAY_CONFIG_FILES            C:\Users\andre\Documents\Databases\Flywaymariadb.conf                                   
+FLYWAY_EDITION                 enterprise                                                                              
+FLYWAY_URL                     jdbc:sqlserver://Philf01:1433;maxResultBuffer=-1;sendTemporalDataTypesAsStringForBulk...
+FLYWAY_USER                    PhilFactor                                                                              
+FP__flyway_database__          PubsSix                                                                                 
+FP__flyway_defaultSchema__     dbo                                                                                     
+FP__flyway_filename__          V1.1.12__test.ps1                                                                       
+FP__flyway_table__             flyway_schema_history                                                                   
+FP__flyway_timestamp__         2021-10-08 11:01:09                                                                     
+FP__flyway_user__              PhilFactor                                                                              
+FP__flyway_workingDirectory__
 #>
 
 
@@ -28,7 +35,8 @@ $DatabaseDetails = @{
 	'version' = ''; #the version
 	'ProjectFolder' = Split-Path $PWD -Parent; #where all the migration files are
     'project' = $env:FP__projectName__; #the name of your project
-    'schemas'=$env:FP__schemas__ # only needed if you are calling flyway
+    'schemas'=$env:FP__schemas__; # only needed if you are calling flyway
+    'historyTable'="$($env:FP__flyway_defaultSchema__).$($env:FP__flyway_table__)";
     'projectDescription'=$env:FP__projectDescription__; #a brief description of the project
 	'uid' = $env:FLYWAY_USER; #optional if you are using windows authewntication
 	'pwd' = ''; #only if you use a uid. Leave blank. we fill it in for you
@@ -70,15 +78,19 @@ else
 
 <#
 this assumes that reports will go in "$($env:USERPROFILE)\Documents\GitHub\$(
-		$param1.EscapedProject)\$($param1.Version)\Reports" but will return
-        the path in the $DatabaseDetails if you need it. Set it to whatever
-        you want
+$param1.EscapedProject)\$($param1.Version)\Reports" but will return
+the path in the $DatabaseDetails if you need it. Set it to whatever
+you want in ..\DatabaseBuildAndMigrateTasks.ps1
+
 You will also need to set SQLCMD to the correct value. This is set by a string
 $SQLCmdAlias in ..\DatabaseBuildAndMigrateTasks.ps1
 
 in order to execute tasks, you just load them up in the order you want. It is like loading a 
 revolver. 
 #>
+
+$DatabaseDetails
+
 $PostMigrationInvocations = @(
 	$FetchAnyRequiredPasswords, #checks the hash table to see if there is a username without a password.
     #if so, it fetches the password from store or asks you for the password if it is a new connection
@@ -88,4 +100,3 @@ $PostMigrationInvocations = @(
     #Save the model for this versiopn of the file
 )
 Process-FlywayTasks $DatabaseDetails $PostMigrationInvocations
-

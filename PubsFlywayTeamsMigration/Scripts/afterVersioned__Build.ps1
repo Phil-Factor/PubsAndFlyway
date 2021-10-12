@@ -1,0 +1,89 @@
+﻿#run the library script, assuming it is in the project directory containing the script directory
+. "..\DatabaseBuildAndMigrateTasks.ps1"
+
+<#
+$env:FP__errorLogFile__='TheErrorlog'
+$env:FP__reportLogFile__='TheReportLog'
+$env:FP__projectName__='TheProjectName'
+$env:FP__projectFolder__='TheProjectFolder'
+$env:FLYWAY_USER='Fred'
+$env:FLYWAY_URL='jdbc:sqlserver://MyServer:1433;maxResultBuffer=-1;sendTemporalDataTypesAsStringForBulkCopy=true;delayLoadingLobs=true;useFmtOnly=false;useBulkCopyForBatchInsert=false;cancelQueryTimeout=-1;sslProtocol=TLS;jaasConfigurationName=SQLJDBCDriver;statementPoolingCacheSize=0;serverPreparedStatementDiscardThreshold=10;enablePrepareOnFirstPreparedStatementCall=false;fips=false;socketTimeout=0;authentication=NotSpecified;authenticationScheme=nativeAuthentication;xopenStates=false;sendTimeAsDatetime=true;trustStoreType=JKS;trustServerCertificate=false;TransparentNetworkIPResolution=true;serverNameAsACE=false;sendStringParametersAsUnicode=true;selectMethod=direct;responseBuffering=adaptive;queryTimeout=-1;packetSize=8000;multiSubnetFailover=false;loginTimeout=15;lockTimeout=-1;lastUpdateCount=true;encrypt=false;disableStatementPooling=true;databaseName=PubsTwo;columnEncryptionSetting=Disabled;applicationName=Microsoft JDBC Driver for SQL Server;applicationIntent=readwrite;'
+#>
+#our regex for gathering variables from Flyway's URL
+$FlywayURLRegex =
+'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w]{1,20}):?(?<port>[\d]{1,4}|);.+databaseName=(?<database>[\w]{1,20})'
+
+#this FLYWAY_URL contains the current database, port and server so
+# it is worth grabbing
+$ConnectionInfo = $env:FLYWAY_URL #get the environment variable
+if ($ConnectionInfo -eq $null) #OMG... it isn't there for some reason
+{ Write-error 'missing value for flyway url' }
+<# a reference to this Hashtable is passed to each process (it is a scriptBlock)
+so as to make debugging easy. We'll be a bit cagey about adding key-value pairs
+as it can trigger the generation of a copy which can cause bewilderment and 
+problems- values don't get passed back. 
+Don't fill anything in here!!! The script does that for you#>
+$DatabaseDetails = @{
+    'RDBMS'=''; # necessary for systems with several RDBMS on the same server
+	'server' = ''; #the name of your server
+	'database' = ''; #the name of the database
+	'version' = ''; #the version
+	'ProjectFolder' = ''; #where all the migration files are
+    'project' = ''; #the name of your project
+    'projectDescription'=''; #a brief description of the project
+	'uid' = ''; #optional if you are using windows authewntication
+	'pwd' = ''; #only if you use a uid. Leave blank. we fill it in for you
+	'locations' = @{ }; # for reporting file locations used
+	'problems' = @{ }; # for reporting any big problems
+	'warnings' = @{ } # for reporting any issues
+} # for reporting any warnings
+
+if ($ConnectionInfo -imatch $FlywayURLRegex)
+{
+	$DatabaseDetails.RDBMS = $matches['RDBMS'];
+	$DatabaseDetails.server = $matches['server'];
+	$DatabaseDetails.port = $matches['port'];
+	$DatabaseDetails.database = $matches['database']
+}
+else
+{ write-error "failed to obtain the value of the RDBMS, server, Port or database from the FLYWAY_URL" }
+$DatabaseDetails.uid = $env:FLYWAY_USER;
+$DatabaseDetails.Project = $env:FP__projectName__;
+$DatabaseDetails.ProjectDescription = $env:FP__projectDescription__;
+$DatabaseDetails.ProjectFolder = split-path $PWD.Path -Parent;
+
+<#
+this assumes that reports will go in "$($env:USERPROFILE)\Documents\GitHub\$(
+		$param1.EscapedProject)\$($param1.Version)\Reports" but will return
+        the path in the $DatabaseDetails if you need it. Set it to whatever
+        you want
+You will also need to set SQLCMD to the correct value. This is set by a string
+$SQLCmdAlias in ..\DatabaseBuildAndMigrateTasks.ps1
+
+in order to execute tasks, you just load them up in the order you want. It is like loading a 
+revolver. 
+#>
+$PostMigrationInvocations = @(
+	$FetchAnyRequiredPasswords, #checks the hash table to see if there is a username without a password.
+    #if so, it fetches the password from store or asks you for the password if it is a new connection
+	$GetCurrentVersion, #checks the database and gets the current version number
+    #it does this by reading the Flyway schema history table. 
+	$CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version. This
+    #uses SQL Compare
+	$CreateScriptFoldersIfNecessary, #writes out a source folder with an object level script if absent.
+    #this uses SQL Compare
+	$ExecuteTableSmellReport, #checks for table-smells
+    #This is an example of generating a SQL-based report
+	$ExecuteTableDocumentationReport, #publishes table docuentation as a json file that allows you to
+    #fill in missing documentation. 
+	$CheckCodeInDatabase, #does a code analysis of the code in the live database in its current version
+    #This uses SQL Codeguard to do this
+	$CheckCodeInMigrationFiles, #does a code analysis of the code in the migration script
+    #This uses SQL Codeguard to do this
+	$IsDatabaseIdenticalToSource, # uses SQL Compare to check that a version of a database is correct
+    #this makes sure that the target is at the version you think it is.
+    $SaveDatabaseModelIfNecessary #writes out the database model
+    #This writes out a model of the version for purposes of comparison, narrative and checking.
+    )
+Process-FlywayTasks $DatabaseDetails $PostMigrationInvocations
+

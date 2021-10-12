@@ -4,7 +4,7 @@ Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway
 #specify the DSN, and create the ODVC connection
 
 # and here are our project details. The project folder
-$ProjectFolder = '<MyPathTo>\PubsAndFlyway\PubsFlywayTeamsMigration'
+$ProjectFolder = 'D:\PubsAndFlyway\PubsFlywayTeamsMigration'
 $Server = '<MyUserName>';
 $Schemas = '<MyListOfSchemas>';
 $Database = '<MyDatabaseName>';
@@ -14,13 +14,14 @@ $ProjectDescription = 'A sample project to demonstrate Flyway Teams, using the o
 $username = '<MyUserName>'
 $port = '<MyPortNumber>'
 
-# add a bit of error-checking. Is the project directory there
-if (-not (Test-Path "$ProjectFolder"))
-{ Write-Error "Sorry, but I couldn't find a project directory at the $ProjectFolder location" }
-# ...and is the script directory there?
-if (-not (Test-Path "$ProjectFolder\Scripts"))
-{ Write-Error "Sorry, but I couldn't find a scripts directory at the $ProjectFolder\Scripts location" }
-# now we get the password if necessary
+# add a bit of error-checking. are the various directories there
+@{'Project Directory'="$ProjectFolder"; 
+'Data Directory'="$ProjectFolder\Data"; 
+'Scripts Directory'="$ProjectFolder\Scripts"}.GetEnumerator()|Foreach{
+    if (-not (Test-Path $_.Value))
+    { Write-Error "Sorry, but I couldn't find a $($_.Name) at the $($_.Value) location" }
+}
+<# we will need to retrieve credentials #>   
 if ($username -ne '') #then it is using SQL Server Credentials
 {
 	# we see if we've got these stored already
