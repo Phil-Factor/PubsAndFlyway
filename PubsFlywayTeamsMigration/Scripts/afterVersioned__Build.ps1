@@ -68,7 +68,7 @@ $PostMigrationInvocations = @(
     #if so, it fetches the password from store or asks you for the password if it is a new connection
 	$GetCurrentVersion, #checks the database and gets the current version number
     #it does this by reading the Flyway schema history table. 
-	$CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version. This
+<#	$CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version. This
     #uses SQL Compare
 	$CreateScriptFoldersIfNecessary, #writes out a source folder with an object level script if absent.
     #this uses SQL Compare
@@ -83,7 +83,8 @@ $PostMigrationInvocations = @(
 	$IsDatabaseIdenticalToSource, # uses SQL Compare to check that a version of a database is correct
     #this makes sure that the target is at the version you think it is.
     $SaveDatabaseModelIfNecessary #writes out the database model
-    #This writes out a model of the version for purposes of comparison, narrative and checking.
+    #This writes out a model of the version for purposes of comparison, narrative and checking. #>
+    $CreateUndoScriptIfNecessary
     )
 Process-FlywayTasks $DatabaseDetails $PostMigrationInvocations
 

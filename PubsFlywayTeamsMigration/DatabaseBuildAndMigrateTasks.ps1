@@ -139,7 +139,7 @@ This scriptblock executes SQL that produces a report in XML or JSON from the dat
 
 
 $FormatTheBasicFlywayParameters
-This provides the flyway parameters. This is here bvecause it is useful for the 
+This provides the flyway parameters. This is here because it is useful for the 
 community flyway when you wish to do further Flyway actions after doing any
 scripting and code checks.
 
@@ -183,7 +183,7 @@ $ReportLocation='Documents\GitHub\'# part of path from user area to project arte
 $GetdataFromSQLCMD = {<# a Scriptblock way of accessing SQL Server via a CLI to get JSON results without having to 
 explicitly open a connection. it will take SQL files and queries #>
 	Param ($Theargs,
-		$query, $fileBasedQuery=$null)
+		$query, $fileBasedQuery=$null)  # $GetdataFromSQLCMD: (Don't delete this)
     if ([string]::IsNullOrEmpty($TheArgs.server) -or [string]::IsNullOrEmpty($TheArgs.database))
     {"[{`"Error`":`"Cannot continue because name of either server ('$($TheArgs.server)') or database ('$($TheArgs.database)') is not provided `"}]"}
     else
@@ -1130,7 +1130,7 @@ columns. If you add or change tables, this can be subsequently used to update th
 AfterMigrate callback script
 for the documentation */#>
 $ExecuteTableDocumentationReport = {
-	Param ($param1) # ExecuteTableDocumentationReport --dont delete this  
+	Param ($param1) # ExecuteTableDocumentationReport  
 
 
 	$problems = @()
@@ -1368,6 +1368,92 @@ $SaveDatabaseModelIfNecessary = {
 	}
 }
 
+$CreateUndoScriptIfNecessary = {
+	Param ($param1) # $CreateUndoScriptIfNecessary (Don't delete this) 
+	$problems = @(); # well, not yet
+    $WeCanDoIt=$true; #assume that we can generate a script ....so far!
+    #check that we have values for the necessary details
+	@('version', 'server', 'database', 'project') |
+	foreach{ if ($param1.$_ -in @($null,'')) { $Problems += "no value for '$($_)'" } }
+	# the alias must be set to the path of your installed version of SQL Compare
+	Set-Alias SQLCompare $SQLCompareAlias -Scope Script
+	if (!(test-path  ((Get-alias -Name SQLCompare).definition) -PathType Leaf))
+	{ $Problems += 'The alias for SQLCompare is not set correctly yet' }
+	#the database scripts path would be up to you to define, of course
+    $EscapedProject=($Param1.project.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-'
+   #What was the previous version?
+	$AllVersions = $GetdataFromSQLCMD.Invoke(
+		$param1, 'SELECT DISTINCT version
+  FROM dbo.flyway_schema_history
+  WHERE version IS NOT NULL
+FOR JSON AUTO') | convertfrom-json
+    $PreviousVersion = $AllVersions| %{
+				new-object System.Version ($_.version)
+			} | where {$_ -lt [version]$Param1.version}| sort -Descending|select -first 1
+    if ($PreviousVersion -eq $null) {
+        "no previous version to undo to"; 
+        $null=New-Item -ItemType Directory -Force "$env:Temp\DummySource"
+        $PreviousDatabasePath="$env:Temp\DummySource";
+        $PreviousVersion=[version]'0.0.0';
+        }
+    else
+        {
+        $PreviousDatabasePath = "$($env:USERPROFILE)\$ReportLocation$($EscapedProject)\$($PreviousVersion)\Source"
+        If (!(Test-Path -path $PreviousDatabasePath -PathType Container)) 
+            {$WeCanDoIt=$False} #Because no previous source
+        } 
+    $CurrentUndoPath = "$($env:USERPROFILE)\$ReportLocation$($EscapedProject)\$($Param1.Version)\Scripts";
+    if (Test-Path -Path "$CurrentUndoPath\U$($Param1.Version)__Undo.sql" -PathType Leaf )
+        {$WeCanDoIt=$False} #Because it has already been done             
+    If ($WeCanDoIt)
+	    {
+        $Args = @(# we create an array in order to splat the parameters. With many command-line apps you
+		    # can use a hash-table 
+            "/Scripts1:$PreviousDatabasePath"
+		    "/server2:$($param1.server)",
+		    "/database2:$($param1.database)",
+		    "/exclude:table:flyway_schema_history",
+		    "/force", # 
+		    "/options:DoNotOutputCommentHeader,ThrowOnFileParseFailed,ForceColumnOrder,IgnoreNoCheckAndWithNoCheck,IgnoreSquareBrackets,NoSQLPlumbing,IgnoreWhiteSpace,ObjectExistenceChecks,IgnoreSystemNamedConstraintNames,IgnoreTSQLT", # so that we can use the script with Flyway more easily
+		    "/LogLevel:Warning",
+		    "/ScriptFile:$CurrentUndoPath\U$($Param1.Version)__Undo.sql"
+	    )
+	
+	    if ($param1.uid -ne $NULL) #add the arguments for credentials where necessary
+	    {
+		    $Args += @(
+			    "/username2:$($param1.uid)",
+			    "/Password2:$($param1.pwd)"
+		    )
+	    }
+	    if (-not (Test-Path -PathType Container $CurrentUndoPath))
+	    {
+		    # is the path to the scripts directory
+		    # not there, so we create the directory 
+		    $null = New-Item -ItemType Directory -Force $CurrentUndoPath;
+	    }
+		# if it is done already, then why bother? (delete it if you need a re-run for some reason 	
+		Sqlcompare @Args #run SQL Compare with splatted arguments
+		if ($?) { "Written build script for $($param1.Project) $($param1.Version) to $MyDatabasePath" }
+		else # if no errors then simple message, otherwise....
+		{
+			#report a problem and send back the args for diagnosis (hint, only for script development)
+			$Arguments = '';
+			$Arguments += $args | foreach{ $_ }
+			$Problems += "SQLCompare Went badly. (code $LASTEXITCODE) with paramaters $Arguments"
+		}
+		if ($problems.count -gt 0)
+		{ $Param1.Problems.'CreateUNDOScriptIfNecessary' += $problems; }
+	}
+	else { "This version '$($param1.Version)' already has a undo script to get to $PreviousVersion at $CurrentUndoPath\U$($Param1.Version)__Undo.sql " }
+	
+}
+
+Set-Alias SQLCompare $SQLCompareAlias -Scope Script
+SQLCompare /Scripts1:C:\Users\andre\Documents\GitHub\experiment\1.1.10\Source /server2:pentlowMillServ /database2:PubsFive /exclude:table:flyway_schema_history /options:NoSQLPlumbing,ObjectExistenceChecks,IgnoreSystemNamedConstraintNames,IgnoreTSQLT /LogLevel:Warning /ScriptFile:C:\Users\andre\Documents\GitHub\experiment\1.1.11\Scripts\U1.1.11__Undo.sql /username2:PhilFactor /Password2:ismellofpoo4U
+
+
+
 
 function Process-FlywayTasks
 {
@@ -1430,4 +1516,4 @@ function Process-FlywayTasks
    }
 
 
-'scriptblocks and cmdlet loaded. V1.2.33'
+'scriptblocks and cmdlet loaded. V1.2.34'
