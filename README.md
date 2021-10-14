@@ -27,7 +27,7 @@ These various projects are
 
 - PubsSQLite
 
-#The Flyway Articles
+# The Flyway Articles
 
 I've written several articles, with plenty in the pipeline, to explain the many features of Flyway, using sample code that you can play with to get familiar with the system. I'm one of those who learn best by doing stuff, and you could be similar.
 
