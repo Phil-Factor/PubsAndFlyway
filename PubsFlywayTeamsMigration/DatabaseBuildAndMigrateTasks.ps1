@@ -1414,7 +1414,7 @@ FOR JSON AUTO') | convertfrom-json
 		    "/database2:$($param1.database)",
 		    "/exclude:table:flyway_schema_history",
 		    "/force", # 
-		    "/options:DoNotOutputCommentHeader,ThrowOnFileParseFailed,ForceColumnOrder,IgnoreNoCheckAndWithNoCheck,IgnoreSquareBrackets,NoSQLPlumbing,IgnoreWhiteSpace,ObjectExistenceChecks,IgnoreSystemNamedConstraintNames,IgnoreTSQLT", # so that we can use the script with Flyway more easily
+		    "/options:NoErrorHandling,NoTransactions,DoNotOutputCommentHeader,ThrowOnFileParseFailed,ForceColumnOrder,IgnoreNoCheckAndWithNoCheck,IgnoreSquareBrackets,IgnoreWhiteSpace,ObjectExistenceChecks,IgnoreSystemNamedConstraintNames,IgnoreTSQLT", # so that we can use the script with Flyway more easily
 		    "/LogLevel:Warning",
 		    "/ScriptFile:$CurrentUndoPath\U$($Param1.Version)__Undo.sql"
 	    )
@@ -1448,12 +1448,6 @@ FOR JSON AUTO') | convertfrom-json
 	else { "This version '$($param1.Version)' already has a undo script to get to $PreviousVersion at $CurrentUndoPath\U$($Param1.Version)__Undo.sql " }
 	
 }
-
-Set-Alias SQLCompare $SQLCompareAlias -Scope Script
-SQLCompare /Scripts1:C:\Users\andre\Documents\GitHub\experiment\1.1.10\Source /server2:pentlowMillServ /database2:PubsFive /exclude:table:flyway_schema_history /options:NoSQLPlumbing,ObjectExistenceChecks,IgnoreSystemNamedConstraintNames,IgnoreTSQLT /LogLevel:Warning /ScriptFile:C:\Users\andre\Documents\GitHub\experiment\1.1.11\Scripts\U1.1.11__Undo.sql /username2:PhilFactor /Password2:ismellofpoo4U
-
-
-
 
 function Process-FlywayTasks
 {
