@@ -597,21 +597,24 @@ $GetCurrentVersion = {
 			$DoIt = $False;
 		}
 	}
+    $flywayTable=$Param1.flywayTable
+   if ($flywayTable -eq $null)
+        {$flywayTable='dbo.flyway_schema_history'}
 	$Version = 'unknown'
 	$AllVersions = $GetdataFromSQLCMD.Invoke(
-		$param1, 'SELECT DISTINCT version
-  FROM dbo.flyway_schema_history
+		$param1, "SELECT DISTINCT version
+  FROM $flywayTable
   WHERE version IS NOT NULL
-FOR JSON AUTO') |
+FOR JSON AUTO") |
 	convertfrom-json
 	$LastAction = $GetdataFromSQLCMD.Invoke(
-		$param1, 'SELECT version, type
-  FROM dbo.flyway_schema_history
+		$param1, "SELECT version, type
+  FROM $flywayTable
   WHERE
   installed_rank =
-    (SELECT Max (installed_rank) FROM dbo.flyway_schema_history
+    (SELECT Max (installed_rank) FROM $flywayTable
        WHERE success = 1)
-FOR JSON AUTO') |
+FOR JSON AUTO") |
 	convertfrom-json
 	if ($AllVersions.error -ne $null) { $problems += $AllVersions.error }
 	if ($LastAction.error -ne $null) { $problems += $LastAction.error }
@@ -1382,11 +1385,14 @@ $CreateUndoScriptIfNecessary = {
 	#the database scripts path would be up to you to define, of course
     $EscapedProject=($Param1.project.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-'
    #What was the previous version?
+   $flywayTable=$Param1.flywayTable
+   if ($flywayTable -eq $null)
+        {$flywayTable='dbo.flyway_schema_history'}
 	$AllVersions = $GetdataFromSQLCMD.Invoke(
-		$param1, 'SELECT DISTINCT version
-  FROM dbo.flyway_schema_history
+		$param1, "SELECT DISTINCT version
+  FROM $flywayTable
   WHERE version IS NOT NULL
-FOR JSON AUTO') | convertfrom-json
+FOR JSON AUTO") | convertfrom-json
     $PreviousVersion = $AllVersions| %{
 				new-object System.Version ($_.version)
 			} | where {$_ -lt [version]$Param1.version}| sort -Descending|select -first 1
@@ -1414,7 +1420,8 @@ FOR JSON AUTO') | convertfrom-json
 		    "/database2:$($param1.database)",
 		    "/exclude:table:flyway_schema_history",
 		    "/force", # 
-		    "/options:NoErrorHandling,NoTransactions,DoNotOutputCommentHeader,ThrowOnFileParseFailed,ForceColumnOrder,IgnoreNoCheckAndWithNoCheck,IgnoreSquareBrackets,IgnoreWhiteSpace,ObjectExistenceChecks,IgnoreSystemNamedConstraintNames,IgnoreTSQLT", # so that we can use the script with Flyway more easily
+		    "/options:NoErrorHandling,NoTransactions,DoNotOutputCommentHeader,ThrowOnFileParseFailed,ForceColumnOrder,IgnoreNoCheckAndWithNoCheck,IgnoreSquareBrackets,IgnoreWhiteSpace,ObjectExistenceChecks,IgnoreSystemNamedConstraintNames,IgnoreTSQLT,NoDeploymentLogging", 
+# so that we can use the script with Flyway more easily
 		    "/LogLevel:Warning",
 		    "/ScriptFile:$CurrentUndoPath\U$($Param1.Version)__Undo.sql"
 	    )
