@@ -86,11 +86,7 @@ Flyway @FlywayUndoArgs migrate "-target=$_"
 #if this works we're probably good to go
 
 Flyway @FlywayUndoArgs info -teams
-Flyway @FlywayUndoArgs clean -teams
-Flyway @FlywayUndoArgs migrate 
-Flyway @FlywayUndoArgs undo 
-#Flyway @FlywayUndoArgs migrate '-target=1.1.8'
-#Flyway @FlywayUndoArgs undo '-target=1.1.7'
+
 
 
 
