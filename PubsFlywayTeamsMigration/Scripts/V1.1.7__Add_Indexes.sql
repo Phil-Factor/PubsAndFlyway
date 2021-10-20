@@ -24,8 +24,11 @@ IF  (Object_Id('dbo.employee') IS NOT NULL
 IF  (Object_Id('dbo.publications') IS NOT NULL
 	AND IndexProperty(Object_Id('dbo.publications'),'pubid_index','IndexID') IS NULL)
 	CREATE INDEX pubid_index ON dbo.publications(pub_id)
+	/*
+IF  (Object_Id('dbo.editions') IS NOT NULL
+	AND IndexProperty(Object_Id('dbo.editions'),'PublicationType_index','IndexID') IS NULL)
+	CREATE INDEX PublicationType_index ON dbo.Editions(publication_Type)
 
-/*
 Undo
 
 IF  (IndexProperty(Object_Id('dbo.editions'),'Publicationid_index','IndexID') IS NOT NULL)
