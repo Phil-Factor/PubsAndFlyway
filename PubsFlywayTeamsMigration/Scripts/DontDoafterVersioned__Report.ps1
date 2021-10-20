@@ -54,7 +54,8 @@ if ($weCanContinue)
 	if ($username -ne '' -and $RDBMS -ne 'sqlite') #then it is using Credentials
 	{
 		# we see if we've got these stored already
-		$SqlEncryptedPasswordFile = "$env:USERPROFILE\$($uid)-$Server-$($RDBMS).xml"
+		$escapedServer=($server.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.','-'
+        $SqlEncryptedPasswordFile = "$env:USERPROFILE\$($uid)-$escapedServer-$($RDBMS).xml"
 		# test to see if we know about the password in a secure string stored in the user area
 		if (Test-Path -path $SqlEncryptedPasswordFile -PathType leaf)
 		{
