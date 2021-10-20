@@ -84,12 +84,22 @@ if ($weCanContinue)
 		@("-url=$($ConnectionInfo)(if $RDBMS -eq 'sqlserver'){'integratedSecurity=true'}else {''})".
 			"-locations=filesystem:$PWD")<# the migration folder #>
 	}
+    $FlyWayArgs+=gci env:FP__* |
+       Foreach {
+          "$($_.Name -ireplace 'FP__(?<Variable>[\w]*)__', '-placeholders.${Variable}=')$($_.Value.ToLower())"}
+
 	$internalLog += "running Flyway with $FlyWayArgs"
 	$internalLog | foreach{ $_ >> "$(Split-Path  $PWD -Parent)\Usage.log" }
 	$internalLog = @()
 	
 	#get a JSON report of the history. We only want the record for the current version
+    try{
 	$report = Flyway info  @FlywayArgs -outputType=json | convertFrom-json
+        }
+    catch
+        {
+        $report.error ="We got an uncaugt error from Flyway $($_.ScriptStackTrace)"
+        }
     
 	if ($report.error -ne $null) #if an error was reported by Flyway
 	{
@@ -111,7 +121,7 @@ if ($weCanContinue)
 		}
 	} # now add all the values from the record for the current version
 	$Report.migrations |
-	where { $_.version -eq $Report.schemaVersion } | foreach{
+	where { $_.version -eq $Report.schemaVersion } | select -Last 1| foreach{
 		$rec = $_; #remember this for gettinmg it's value
 		$rec | gm -MemberType NoteProperty
 	} | foreach{
