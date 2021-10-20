@@ -95,22 +95,23 @@ $PostMigrationTasks = @(
     #if so, it fetches the password from store or asks you for the password if it is a new connection
 	$GetCurrentVersion, #checks the database and gets the current version number
     #it does this by reading the Flyway schema history table. 
-#	$CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version. This
+	$CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version. This
     #uses SQL Compare
 	$CreateScriptFoldersIfNecessary, #writes out a source folder with an object level script if absent.
     #this uses SQL Compare
-#	$ExecuteTableSmellReport, #checks for table-smells
+	$ExecuteTableSmellReport, #checks for table-smells
     #This is an example of generating a SQL-based report
-#	$ExecuteTableDocumentationReport, #publishes table docuentation as a json file that allows you to
+	$ExecuteTableDocumentationReport, #publishes table docuentation as a json file that allows you to
     #fill in missing documentation. 
-#	$CheckCodeInDatabase, #does a code analysis of the code in the live database in its current version
+	$CheckCodeInDatabase, #does a code analysis of the code in the live database in its current version
     #This uses SQL Codeguard to do this
-#	$CheckCodeInMigrationFiles, #does a code analysis of the code in the migration script
+	$CheckCodeInMigrationFiles, #does a code analysis of the code in the migration script
     #This uses SQL Codeguard to do this
-#	$IsDatabaseIdenticalToSource, # uses SQL Compare to check that a version of a database is correct
+	$IsDatabaseIdenticalToSource, # uses SQL Compare to check that a version of a database is correct
     #this makes sure that the target is at the version you think it is.
-#    $SaveDatabaseModelIfNecessary #writes out the database model
+    $SaveDatabaseModelIfNecessary #writes out the database model
     #This writes out a model of the version for purposes of comparison, narrative and checking. 
-    $CreateUndoScriptIfNecessary
+    $CreateUndoScriptIfNecessary # uses SQL Compare
+    #Creates a first-cut UNDo script. This is an idempotentic script that undoes to the previous version 
     )
 Process-FlywayTasks $DatabaseDetails $PostMigrationTasks
