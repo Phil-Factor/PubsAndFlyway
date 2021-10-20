@@ -11,7 +11,7 @@ $env:FLYWAY_URL='jdbc:sqlserver://MyServer:1433;maxResultBuffer=-1;sendTemporalD
 #>
 #our regex for gathering variables from Flyway's URL
 $FlywayURLRegex =
-'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w]{1,20})(?<port>:[\d]{1,4}|);.+databaseName=(?<database>[\w]{1,20})'
+'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w\-\.]{1,40})(?<port>:[\d]{1,4}|)(;.+databaseName=|/)(?<database>[\w]{1,20})'
 
 #this FLYWAY_URL contains the current database, port and server so
 # it is worth grabbing

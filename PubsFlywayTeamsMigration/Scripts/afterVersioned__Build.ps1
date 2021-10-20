@@ -28,7 +28,7 @@ is likely to tell you the server, port, database and the type of database (RDBMS
 if we just want to make JDBC calls. We can't and don't. Instead we extract the connection details
 and use these. #>
 $FlywayURLRegex =
-'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w]{1,20}):?(?<port>[\d]{1,4}|);.+databaseName=(?<database>[\w]{1,20})'
+'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w\-\.]{1,40})(?<port>:[\d]{1,4}|)(;.+databaseName=|/)(?<database>[\w]{1,20})'
 
 #this FLYWAY_URL contains the current database, port and server so it is worth grabbing
 $ConnectionInfo = $env:FLYWAY_URL #get the environment variable

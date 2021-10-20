@@ -2,11 +2,17 @@
 Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.15.0\flyway.cmd' -Scope local
 Set-Alias SQLite  'C:\ProgramData\chocolatey\lib\SQLite\tools\sqlite-tools-win32-x86-3360000\sqlite3.exe' -Scope local
 
+#test these aliases
+if (!(test-path  ((Get-alias -Name Flyway).definition) -PathType Leaf))
+{ write-error 'The alias for Flyway is not set correctly yet' }
+if (!(test-path  ((Get-alias -Name SQLite).definition) -PathType Leaf))
+{ write-error 'The alias for SQLite is not set correctly yet' }
+
 $internalLog=@("$(Get-date)- started with $env:FLYWAY_USER ")
 $WeCanContinue = $true
 #our regex for gathering variables from Flyway's URL
 $FlywayURLRegex =
-'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w]{1,20})(?<port>:[\d]{1,4}|)(;.+databaseName=|/)(?<database>[\w]{1,20})'
+'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w\-\.]{1,40})(?<port>:[\d]{1,4}|)(;.+databaseName=|/)(?<database>[\w]{1,20})'
 $FlywayURLTruncationRegex = 'jdbc:.{1,30}://.{1,30}(;|/)'
 #this FLYWAY_URL contains the current database, port and server so
 # it is worth grabbing
@@ -16,6 +22,10 @@ if ($ConnectionInfo -eq $null) #OMG... it isn't there for some reason
 
 $uid = $env:FLYWAY_USER;
 $ProjectFolder = $PWD.Path;
+#test the path
+if (!(test-path  $ProjectFolder -PathType Container))
+{ write-error "There isn't a valid scripts folder at $ProjectFolder" }
+
 
 if ($ConnectionInfo -imatch $FlywayURLRegex)
 {
@@ -79,6 +89,7 @@ if ($weCanContinue)
 	
 	#get a JSON report of the history. We only want the record for the current version
 	$report = Flyway info  @FlywayArgs -outputType=json | convertFrom-json
+    
 	if ($report.error -ne $null) #if an error was reported by Flyway
 	{
 		#if an error (usually bad parameters) error out.
