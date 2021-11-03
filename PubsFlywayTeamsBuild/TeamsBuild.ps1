@@ -4,12 +4,10 @@ Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway
 #specify the DSN, and create the ODVC connection
 
 # and here are our project details. The project folder
-$ProjectFolder = 'D:\PubsAndFlyway\PubsFlywayTeamsMigration'
+$ProjectFolder = '<PathToProjectFolder e.g. PubsAndFlyway\PubsFlywayTeamsMigration>'
 $Server = '<MyUserName>';
 $Schemas = '<MyListOfSchemas>';
 $Database = '<MyDatabaseName>';
-$ProjectName = 'Publications';
-$ProjectDescription = 'A sample project to demonstrate Flyway Teams, using the old Pubs database'
 <# you only need this username and password if there is no domain authentication #>
 $username = '<MyUserName>'
 $port = '<MyPortNumber>'
