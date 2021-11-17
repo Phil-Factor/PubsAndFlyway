@@ -60,10 +60,10 @@ AS
           BEGIN
 -- SQL Prompt formatting off
 		  INSERT INTO @Words(TheWord) 
-		    --SELECT Substring(@THeString,@searched+@Start,@end-@start)
+		    SELECT Substring(@THeString,@searched+@Start,@end-@start)
 			-- to force an error try commenting out the line above
 			-- and uncommenting this next line below
-			SELECT Substring(@THeString,@searched+@Start+1,@end-@start)
+			--SELECT Substring(@THeString,@searched+@Start+1,@end-@start)
 			--to make the tests fail
 		  END
 -- SQL Prompt formatting on
