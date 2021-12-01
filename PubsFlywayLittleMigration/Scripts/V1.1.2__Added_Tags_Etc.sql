@@ -1,9 +1,4 @@
-﻿IF @@ERROR <> 0 SET NOEXEC ON
-GO
-PRINT N'Creating schemas'
-GO
-CREATE SCHEMA [Classic]
-AUTHORIZATION [dbo]
+﻿
 GO
 PRINT N'Creating [dbo].[TagName]'
 GO

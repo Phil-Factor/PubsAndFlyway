@@ -177,7 +177,7 @@ $SQLCompareAlias= "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.e
 #where we want to store reports, the sub directories from the user area.
 $ReportLocation='Documents\GitHub\'# part of path from user area to project artefacts folder location 
 #This must be separate from the flyway project
-
+Set-Alias SQLCmd   $SQLCmdAlias  -Scope local
 
 #This is a utility scriptblock used by the task scriptblocks
 $GetdataFromSQLCMD = {<# a Scriptblock way of accessing SQL Server via a CLI to get JSON results without having to 
