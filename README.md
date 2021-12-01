@@ -31,6 +31,46 @@ These various projects are
 
 I've written several articles, with plenty in the pipeline, to explain the many features of Flyway, using sample code that you can play with to get familiar with the system. I'm one of those who learn best by doing stuff, and you could be similar.
 
+### [Automating Flyway Undos](https://www.red-gate.com/hub/product-learning/redgate-deploy/automating-flyway-undos "Automating Flyway Undos")
+
+How to auto-generate first-cut undo scripts for every Flyway migration
+
+### [Using Flyway Teams with SQL Change Automation PowerShell Cmdlets](https://www.red-gate.com/hub/product-learning/flyway/using-flyway-teams-with-sql-change-automation-powershell-cmdlets)
+
+Use Flyway to run your database migrations, each time automatically creating a SQL Change Automation release object to provide object-level scripts and a build script for the new version, along with change reports and code analysis reports.
+
+### [Bulk Loading Data via a PowerShell Script in Flyway](https://www.red-gate.com/hub/product-learning/flyway/bulk-loading-data-via-a-powershell-script-in-flyway)
+
+How to quickly and automatically bulk load test data once Flyway Teams completes a database migration. A baseline migration script creates the empty database version, which then triggers a PowerShell callback script that bulk loads in the right version of the data. It is a very fast way to provision multiple copies of a database
+
+### [Adding Test Data to Databases During Flyway Migrations](https://www.red-gate.com/hub/product-learning/flyway/adding-test-data-to-databases-during-flyway-migrations)
+
+Before you apply development updates to a live production database, you need to test the changes thoroughly using realistic data. However, it is often not practical, or even permissible, to use the real data taken from the production version of the database, if it contains personal information. Pseudonymized data disguises parts of the information that can be easily used to identify individuals, but to be entirely safe you must either anonymize the production data completely or else generate your own ‘realistic but fake’ development data.
+
+### [Flyway Teams and the Problem of Database Variants](https://www.red-gate.com/hub/product-learning/flyway/flyway-teams-and-the-problem-of-database-variants)
+
+The 'ShouldExecute' script configuration option in Flyway Teams simplifies 'conditional execution' of SQL migration files. This makes it easier to support multiple application versions from the same Flyway project, to deal with different cultural or legislative requirements. It also helps developers handle environmental differences between development, test and staging, such as the need to support multiple versions or releases of the RDBMS.
+
+### [Dry Runs for Database Migrations using Flyway Teams](https://www.red-gate.com/hub/product-learning/flyway/dry-runs-for-database-migrations-using-flyway-teams)
+
+How Dry Run scripts work, and how they can be used to deliver a single-script release artifact to Staging, verify placeholder substitutions in SQL migration scripts, and simply team code reviews.
+
+### [A Flyway Teams Callback Script for Auditing SQL Migrations](https://www.red-gate.com/hub/product-learning/flyway/a-flyway-teams-callback-script-for-auditing-sql-migrations)
+
+Demonstrates a cross-database PowerShell callback script for reporting on and auditing Flyway migrations, telling you which scripts were used to create each version, when they were run, who ran them and more.
+
+### [Getting In A State Using Flyway](https://www.red-gate.com/hub/product-learning/flyway/getting-in-a-state-using-flyway)
+
+Flyway Teams baseline migration scripts are a simple and fast way to deploy new copies of a database, at a specific version, for testing work, or to create a new branch during development.
+
+### [Scripting with Flyway Teams and PowerShell](https://www.red-gate.com/hub/product-learning/flyway/scripting-with-flyway-teams-and-powershell)
+
+During the development cycle, the mechanics of reliable delivery must not be allowed to dominate the design work. With script callbacks in Flyway Teams, many of the development tasks required during a database migration can happen automatically, producing reports, build scripts, code reviews, or documentation.
+
+### [Secrets of Flyway Teams Undo](Secrets of Flyway Teams Undo)
+
+Flyway Teams has an Undo facility that enables you to roll back one or more migrations. This article demonstrates how it works and explains how Undo migrations make testing migration scripts easier and branch-based development simpler.
+
 ### [Flyway Without the Typing](https://www.red-gate.com/hub/product-learning/flyway/flyway-without-the-typing)
 
   How to use Flyway configuration files to minimize typing during ad-hoc development from PowerShell or DOS; you just type in the Flyway commands you need and hit "go" and the config files take care of all the tiresome connection, authentication and project details. [
