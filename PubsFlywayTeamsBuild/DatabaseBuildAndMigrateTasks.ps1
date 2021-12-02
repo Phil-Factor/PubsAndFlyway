@@ -93,7 +93,6 @@ and saves the report in a subdirectory the version directory of your
 project artefacts. It also reports back in the $DatabaseDetails
 Hashtable. It checks the scripts not the current database.
 
-
 $CreateScriptFoldersIfNecessary:
 this task checks to see if a Source folder already exists for this version of the
 database and, if not, it will create one and fill it with subdirectories for each
@@ -107,7 +106,6 @@ $CreateBuildScriptIfNecessary:
 produces a build script from the database, using SQL Compare. It saves the build script
 in the Scripts folder, as a subfolder for the supplied version, so it needs
 $GetCurrentVersion to have been run beforehand in the chain of tasks.
-
 
 $ExecuteTableSmellReport
 This scriptblock executes SQL that produces a report in XML or JSON from the database
@@ -137,7 +135,6 @@ and database, it uses it.
 $ExecuteTableSmellReport
 This scriptblock executes SQL that produces a report in XML or JSON from the database
 
-
 $FormatTheBasicFlywayParameters
 This provides the flyway parameters. This is here because it is useful for the 
 community flyway when you wish to do further Flyway actions after doing any
@@ -164,6 +161,28 @@ This writes a JSON model of the database to a file that can be used subsequently
 to check for database version-drift or to create a narrative of changes for the
 flyway project between versions.
 
+$BulkCopyIn
+This script performs a bulk copy operation to get data into a database. It
+can only do this if the data is in a suitable directory. At the moment it assumes
+that you are using a DATA directory at the same level as the scripts directory. 
+BCP must have been previously installed in the path 
+Unlike many other tasks, you are unlikely to want to do this more than once for any
+database.If you did, you'd need to clear out the existing data first! It is intended
+for static scripts AKA baseline migrations.
+
+$BulkCopyout
+This script performs a bulk copy operation to get data out of a database, and
+into a suitable directory. At the moment it assumes that you wish to use a 
+DATA directory at the same level as the scripts directory. 
+BCP must have been previously installed in the path.
+
+$CreateUndoScriptIfNecessary
+this creates a first-cut UNDO script for the metadata (not the data) which can
+be adjusted and modified quickly to produce an UNDO Script. It does this by using
+SQL Compare to generate a  idepotentic script comparing the database with the 
+contents of the previous version.#>
+
+
 
 
  #>
@@ -177,7 +196,7 @@ $SQLCompareAlias= "${env:ProgramFiles(x86)}\Red Gate\SQL Compare 13\sqlcompare.e
 #where we want to store reports, the sub directories from the user area.
 $ReportLocation='Documents\GitHub\'# part of path from user area to project artefacts folder location 
 #This must be separate from the flyway project
-
+Set-Alias SQLCmd   $SQLCmdAlias  -Scope local
 
 #This is a utility scriptblock used by the task scriptblocks
 $GetdataFromSQLCMD = {<# a Scriptblock way of accessing SQL Server via a CLI to get JSON results without having to 
@@ -1274,10 +1293,17 @@ $SaveDatabaseModelIfNecessary = {
 		if ([string]::IsNullOrEmpty($param1.$_))
 		{ $Problems += "no value for '$($_)'" }
 	}
-	$routine = "$($param1.ProjectFolder)\TheGloopDatabaseModel.sql"
+	try
+        {$routine = "$($param1.ProjectFolder)\TheGloopDatabaseModel.sql"
 	$escapedProject = ($Param1.project.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.', '-'
 	$MyDatabasePath = "$($env:USERPROFILE)\$ReportLocation$(
 		$EscapedProject)\$($param1.Version)\Reports"
+    if (Test-Path -PathType Leaf $MyDatabasePath)
+	{
+		# does the path to the reports directory exist as a file for some reason?
+		# there, so we delete it 
+		remove-Item $MyDatabasePath;
+	}
 	if (-not (Test-Path -PathType Container $MyDatabasePath))
 	{
 		# does the path to the reports directory exist?
@@ -1359,15 +1385,20 @@ $SaveDatabaseModelIfNecessary = {
 				}
 				catch
 				{
-					$Param1.Problems.'SaveDatabaseModelIfNecessary' += "could not convert the json object "
+                    $PSSourceCode >$MyOutputReport
+					$Param1.Problems.'SaveDatabaseModelIfNecessary' += "could not convert the json object"
 				}
 			}
 			if ($problems.Count -eq 0) {$Param1.Locations.'SaveDatabaseModelIfNecessary' = $MyOutputReport;}
 		}
 	}
+}
+    catch {$Param1.Problems.'SavedDatabaseModelIfNecessary' +="$($PSItem.Exception.Message)"
+    }
+
 	if ($problems.Count -gt 0)
 	{
-		$Param1.Problems.'SaveDatabaseModelIfNecessary' += $problems;
+		$Param1.Problems.'SavedDatabaseModelIfNecessary' += $problems;
 	}
 }
 
@@ -1477,6 +1508,7 @@ $BulkCopyIn = {
 	@('server', 'database', 'project', 'version') |
 	foreach{ if ($param1.$_ -in @($null, '')) { $Problems += "no value for '$($_)'" } }
 	$FilePath = '..\Data'
+	
 	#Now finished getting credentials. Is the data directory there
 	if (!(Test-Path -path $Filepath -PathType Container))
 	{
@@ -1486,55 +1518,57 @@ $BulkCopyIn = {
 	if ($weCanDoIt)
 	{
 		#now we know the version we get a list of the tables.
-		$Tables = $GetdataFromSQLCMD.Invoke($param1, @"
-SELECT Object_Schema_Name (object_id) AS [Schema], name
+		$Tables = $GetdataFromSQLCMD.Invoke($Param1, @"
+SET NOCOUNT ON;
+DECLARE @json NVARCHAR(MAX);
+SELECT @json =
+  (SELECT Object_Schema_Name (object_id) AS [Schema], name
      FROM sys.tables
      WHERE
-     is_ms_shipped = 0 AND name NOT LIKE 'Flyway%' for json auto
+     is_ms_shipped = 0 AND name NOT LIKE 'Flyway%'
+  FOR JSON AUTO);
+SELECT @json;
 "@) | ConvertFrom-Json
 		Write-verbose "Reading data in from $DirectoryToLoadFrom"
 		if ($Tables.Error -ne $null)
 		{
 			$internalLog += $Tables.Error;
-			$WeCanDoIt = $false;
-		}
-		
-		$Result = $GetdataFromSQLCMD.Invoke($Param1, @'
-    EXEC sp_MSforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT all"
-'@);
-		if ($Result.Error -ne $null)
-		{
-			$internalLog += $Tables.Error;
 			$weCanDoIt = $false;
 		}
 	}
+	
+	$Result = $GetdataFromSQLCMD.Invoke($Param1, @'
+    EXEC sp_MSforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT all"
+'@);
+	if ($Result.Error -ne $null)
+	{
+		$internalLog += $Tables.Error;
+		$weCanDoIt = $false;
+	}
+	
 	if ($weCanDoIt)
 	{
-		$directory = "$Filepath\$($Param1.version.Split([IO.Path]::GetInvalidFileNameChars()) -join '_')";
+		$directory = "$Filepath\$($version.Split([IO.Path]::GetInvalidFileNameChars()) -join '_')";
 		$Tables |
 		foreach {
 			# calculate where it gotten from #
-			if ($WeCanDoIt)
+			$filename = "$($_.Schema)_$($_.Name)".Split([IO.Path]::GetInvalidFileNameChars()) -join '_';
+			$progress = '';
+			Write-Verbose "Reading in $filename from $($directory)\$filename.bcp"
+			if ($User -ne '') #using standard credentials 
 			{
-				$filename = "$($_.Schema)_$($_.Name)".Split([IO.Path]::GetInvalidFileNameChars()) -join '_';
-				$progress = '';
-				 "Reading in $filename from $($directory)\$filename.bcp"
-				if ($User -ne '') #using standard credentials 
-				{
-					$Progress = BCP "$($_.Schema).$($_.Name)" in "$directory\$filename.bcp" -q -n -E `
-									"-U$($param1.uid)"  "-P$($param1.pwd)" "-d$($param1.Database)" "-S$($param1.server)"
-				}
-				else #using windows authentication
-				{
-					#-E Specifies that identity value or values in the imported data are to be used
-					$Progress = BCP "$($_.Schema).$($_.Name)" in "$directory\$filename.bcp" -q -n -E `
-									"-d$($param1.Database)" "-S$($param1.server)"
-				}
-				if (-not ($?) -or $Progress[0].Contains('SQLState')) # if there was an error
-				{
-					$Problems += "Error with data import  of $($directory)\$($_.Schema)_$($_.Name).bcp using $($param1.uid) to access $($param1.Database) on $($param1.server)-  $Progress ";
-					$WeCanDoIt = $false
-				}
+				$Progress = BCP "$($_.Schema).$($_.Name)" in "$directory\$filename.bcp" -q -n -E `
+								"-U$($user)"  "-P$password" "-d$($Database)" "-S$server"
+			}
+			else #using windows authentication
+			{
+				#-E Specifies that identity value or values in the imported data are to be used
+				$Progress = BCP "$($_.Schema).$($_.Name)" in "$directory\$filename.bcp" -q -n -E `
+								"-d$($Database)" "-S$server"
+			}
+			if (-not ($?) -or $Progress -like '*Error*') # if there was an error
+			{
+				$Problems += "Error with data import  of $($directory)\$($_.Schema)_$($_.Name).bcp -  $Progress ";
 			}
 		}
 	}
@@ -1553,7 +1587,7 @@ DATA directory at the same level as the scripts directory.
 BCP must have been previously installed in the path.
 #>
 $BulkCopyOut = {
-	Param ($param1) # $BulkCopyOut (Don't delete this) 
+	Param ($param1) # $$BulkCopyOut (Don't delete this) 
 	$problems = @(); # well, not yet
 	$WeCanDoIt = $true; #assume that we can BCP data in.so far!
 	#check that we have values for the necessary details
@@ -1568,10 +1602,15 @@ $BulkCopyOut = {
 	
 	#now we know the version we get a list of the tables.
 	$Tables = $GetdataFromSQLCMD.Invoke($param1, @"
-SELECT Object_Schema_Name (object_id) AS [Schema], name
+SET NOCOUNT ON;
+DECLARE @json NVARCHAR(MAX);
+SELECT @json =
+  (SELECT Object_Schema_Name (object_id) AS [Schema], name
      FROM sys.tables
      WHERE
-     is_ms_shipped = 0 AND name NOT LIKE 'Flyway%' for json auto
+     is_ms_shipped = 0 AND name NOT LIKE 'Flyway%'
+  FOR JSON AUTO);
+SELECT @json;
 "@) | ConvertFrom-Json
 	Write-verbose "Reading data in from $DirectoryToLoadFrom"
 	if ($Tables.Error -ne $null)
@@ -1581,37 +1620,30 @@ SELECT Object_Schema_Name (object_id) AS [Schema], name
 	}
 	if ($WeCanDoIt)
 	{
-		$directory = "$Filepath\$($Param1.version.Split([IO.Path]::GetInvalidFileNameChars()) -join '_')";
-		if (-not (Test-Path "$directory"))
-		{ New-Item -ItemType Directory -Path "$directory" -Force }
-		
+		$directory = "$Filepath\$($version.Split([IO.Path]::GetInvalidFileNameChars()) -join '_')";
 		$Tables |
 		foreach {
-			if ($WeCanDoIt)
+			# calculate where it gotten from #
+			$filename = "$($_.Schema)_$($_.Name)".Split([IO.Path]::GetInvalidFileNameChars()) -join '_';
+			$progress = '';
+			Write-Verbose "writing out $filename to  $($directory)\$filename.bcp"
+			if ($User -ne '') #using standard credentials 
 			{
-				# calculate where it gotten from #
-				$filename = "$($_.Schema)_$($_.Name)".Split([IO.Path]::GetInvalidFileNameChars()) -join '_';
-				$progress = '';
-				"writing out $filename to  $($directory)\$filename.bcp"
-				if ($User -ne '') #using standard credentials 
-				{
-					$Progress = BCP "$($_.Schema).$($_.Name)"  out  "$directory\$filename.bcp"  `
-									-n "-d$($Param1.Database)"  "-S$($Param1.server)"  `
-									"-U$($Param1.uid)" "-P$($Param1.pwd)"
-				}
-				else #using windows authentication
-				{
-					#-E Specifies that identity value or values in the imported data are to be used
-					
-					$Progress = BCP "$($_.Schema).$($_.Name)" out "$directory\$filename.bcp" -q -n -E `
-									"-d$($Param1.Database)" "-S$($Param1.server)"
-					
-				}
-				if (-not ($?) -or $Progress[0].Contains('SQLState')) # if there was an error
-				{
-					$Problems += "Error with data export  of $($directory)\$($_.Schema)_$($_.Name).bcp -  $Progress ";
-					$WeCanDoIt = $false
-				}
+				$Progress = BCP "$($_.Schema).$($_.Name)"  out  "$directory\$filename.bcp"  `
+								-n "-d$($Database)"  "-S$($server)"  `
+								"-U$user" "-P$password"
+			}
+			else #using windows authentication
+			{
+				#-E Specifies that identity value or values in the imported data are to be used
+				
+				$Progress = BCP "$($_.Schema).$($_.Name)" in "$directory\$filename.bcp" -q -n -E `
+								"-d$($Database)" "-S$server"
+				
+			}
+			if (-not ($?) -or $Progress -like '*Error*') # if there was an error
+			{
+				$Problems += "Error with data export  of $($directory)\$($_.Schema)_$($_.Name).bcp -  $Progress ";
 			}
 		}
 	}
@@ -1654,13 +1686,15 @@ function Process-FlywayTasks
         }
 		
 	}
-
 	#print out any errors and warnings. 
 	if ($DatabaseDetails.Problems.Count -gt 0) #list out every problem and which task failed
 	{
 		$DatabaseDetails.Problems.GetEnumerator() |
-		Foreach{ Write-warning "Problem! $($_.Key)---------"; $_.Value } |
-		foreach { write-warning "`t$_" }
+		   Foreach{ Write-warning "Problem! $($_.Key)---------"; $_.Value } |
+		      foreach { write-warning "`t$_" }
+        gci env:* | sort-object name| 
+           where {$_.Name -like 'FP*' -or $_.Name -like 'Fly*'}|
+              foreach {Write-warning "$($_.Name)=$($_.value)"}
 	}
 	if ($DatabaseDetails.Warnings.Count -gt 0) #list out exery warning and which task failed
 	{
@@ -1672,11 +1706,7 @@ function Process-FlywayTasks
 	$DatabaseDetails.Locations.GetEnumerator() |
 		Foreach{ Write-Output "For the $($_.Key), we saved the report in $($_.Value)" } 
 
-
-
-<#    $DatabaseDetails.locations|gm -MemberType Property|foreach{
-       "For the $($_.Name) we saved the result in $($databaseDetails.locations.($_.Name))"}#>
    }
 
 
-'scriptblocks and cmdlet loaded. V1.2.40'
+'scriptblocks and cmdlet loaded. V1.2.45'

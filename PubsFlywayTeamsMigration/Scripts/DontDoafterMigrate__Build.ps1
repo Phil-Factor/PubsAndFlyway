@@ -1,14 +1,6 @@
 ﻿#run the library script, assuming it is in the project directory containing the script directory
 . "..\DatabaseBuildAndMigrateTasks.ps1"
 
-<#
-$env:FP__errorLogFile__='TheErrorlog'
-$env:FP__reportLogFile__='TheReportLog'
-$env:FP__projectName__='TheProjectName'
-$env:FP__projectFolder__='TheProjectFolder'
-$env:FLYWAY_USER='Fred'
-$env:FLYWAY_URL='jdbc:sqlserver://MyServer:1433;maxResultBuffer=-1;sendTemporalDataTypesAsStringForBulkCopy=true;delayLoadingLobs=true;useFmtOnly=false;useBulkCopyForBatchInsert=false;cancelQueryTimeout=-1;sslProtocol=TLS;jaasConfigurationName=SQLJDBCDriver;statementPoolingCacheSize=0;serverPreparedStatementDiscardThreshold=10;enablePrepareOnFirstPreparedStatementCall=false;fips=false;socketTimeout=0;authentication=NotSpecified;authenticationScheme=nativeAuthentication;xopenStates=false;sendTimeAsDatetime=true;trustStoreType=JKS;trustServerCertificate=false;TransparentNetworkIPResolution=true;serverNameAsACE=false;sendStringParametersAsUnicode=true;selectMethod=direct;responseBuffering=adaptive;queryTimeout=-1;packetSize=8000;multiSubnetFailover=false;loginTimeout=15;lockTimeout=-1;lastUpdateCount=true;encrypt=false;disableStatementPooling=true;databaseName=PubsTwo;columnEncryptionSetting=Disabled;applicationName=Microsoft JDBC Driver for SQL Server;applicationIntent=readwrite;'
-#>
 #our regex for gathering variables from Flyway's URL
 $FlywayURLRegex =
 'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w\-\.]{1,40})(?<port>:[\d]{1,4}|)(;.+databaseName=|/)(?<database>[\w]{1,20})'

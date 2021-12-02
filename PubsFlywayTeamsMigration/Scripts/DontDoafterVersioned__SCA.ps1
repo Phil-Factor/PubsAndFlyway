@@ -47,7 +47,7 @@ else
 $DatabaseDetails.uid = $env:FLYWAY_USER;
 $DatabaseDetails.Project = $env:FP__projectName__;
 $DatabaseDetails.ProjectDescription = $env:FP__projectDescription__;
-$DatabaseDetails.ProjectFolder = split-path $PWD.Path -Parent;
+$DatabaseDetails.ProjectFolder = split-path "$($PWD.Path)" -Parent;
 if ($env:FP__flyway_defaultSchema__ -ne $null -and $env:FP__flyway_table__ -ne $null)
 { $DatabaseDetails.flywayTable = "$($env:FP__flyway_defaultSchema__).$($env:FP__flyway_table__)" }
 else

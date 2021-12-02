@@ -3,21 +3,6 @@
 # Before running this, you will need to have TheGloopDatabaseModel.sql in the same directory as 
 # DatabaseBuildAndMigrateTasks.ps1
 
-<#
-FLYWAY_CONFIG_FILES            C:\Users\andre\Documents\Databases\Flywaymariadb.conf                                   
-FLYWAY_EDITION                 enterprise                                                                              
-FLYWAY_URL                     jdbc:sqlserver://Philf01:1433;maxResultBuffer=-1;sendTemporalDataTypesAsStringForBulk...
-FLYWAY_USER                    PhilFactor                                                                              
-FP__flyway_database__          PubsSix                                                                                 
-FP__flyway_defaultSchema__     dbo                                                                                     
-FP__flyway_filename__          V1.1.12__test.ps1                                                                       
-FP__flyway_table__             flyway_schema_history                                                                   
-FP__flyway_timestamp__         2021-10-08 11:01:09                                                                     
-FP__flyway_user__              PhilFactor                                                                              
-FP__flyway_workingDirectory__
-#>
-
-
 #this FLYWAY_URL contains the current database, port and server so
 # it is worth grabbing
 $ConnectionInfo = $env:FLYWAY_URL #get the environment variable
@@ -35,8 +20,8 @@ $DatabaseDetails = @{
 	'version' = ''; #the version
 	'ProjectFolder' = Split-Path $PWD -Parent; #where all the migration files are
     'project' = $env:FP__projectName__; #the name of your project
-    'schemas'=$env:FP__schemas__; # only needed if you are calling flyway
-    'historyTable'="$($env:FP__flyway_defaultSchema__).$($env:FP__flyway_table__)";
+    'schemas'=$env:FP__schemas__ # only needed if you are calling flyway
+    'historyTable'="$($env:FP__flyway_defaultSchema__).$($env_FP__flyway_filename__ )";
     'projectDescription'=$env:FP__projectDescription__; #a brief description of the project
 	'uid' = $env:FLYWAY_USER; #optional if you are using windows authewntication
 	'pwd' = ''; #only if you use a uid. Leave blank. we fill it in for you
@@ -46,7 +31,7 @@ $DatabaseDetails = @{
 } # for reporting any warnings
 #our regex for gathering variables from Flyway's URL
 $FlywayURLRegex =
-'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w\-\.]{1,40})(?<port>:[\d]{1,4}|)(;.+databaseName=|/)(?<database>[\w]{1,20})'
+'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w\-\.]{1,40})(?<port>:[\d]{1,4}|)(;.*databaseName=|/)(?<database>[\w]{1,20})'
 $FlywayURLTruncationRegex ='jdbc:.{1,30}://.{1,30}(;|/)'
 #this FLYWAY_URL contains the current database, port and server so
 # it is worth grabbing
@@ -73,6 +58,10 @@ elseif ($ConnectionInfo -imatch 'jdbc:(?<RDBMS>[\w]{1,20}):(?<database>[\w:\\]{1
 }
 else
  {
+	$DatabaseDetails.RDBMS = 'sqlserver';
+	$DatabaseDetails.server = 'LocalHost';
+	$DatabaseDetails.port = 'default';
+	$DatabaseDetails.database = $env:FP__flyway_database__;
 	$internalLog+='unmatched connection info'
  }
 
@@ -88,8 +77,7 @@ $SQLCmdAlias in ..\DatabaseBuildAndMigrateTasks.ps1
 in order to execute tasks, you just load them up in the order you want. It is like loading a 
 revolver. 
 #>
-
-$DatabaseDetails
+if ($InternalLog) {if ($InternalLog.count -gt 0) {$InternalLog|foreach{write-warning "$_"}}}
 
 $PostMigrationInvocations = @(
 	$FetchAnyRequiredPasswords, #checks the hash table to see if there is a username without a password.
@@ -100,3 +88,4 @@ $PostMigrationInvocations = @(
     #Save the model for this versiopn of the file
 )
 Process-FlywayTasks $DatabaseDetails $PostMigrationInvocations
+

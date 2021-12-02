@@ -93,7 +93,6 @@ and saves the report in a subdirectory the version directory of your
 project artefacts. It also reports back in the $DatabaseDetails
 Hashtable. It checks the scripts not the current database.
 
-
 $CreateScriptFoldersIfNecessary:
 this task checks to see if a Source folder already exists for this version of the
 database and, if not, it will create one and fill it with subdirectories for each
@@ -107,7 +106,6 @@ $CreateBuildScriptIfNecessary:
 produces a build script from the database, using SQL Compare. It saves the build script
 in the Scripts folder, as a subfolder for the supplied version, so it needs
 $GetCurrentVersion to have been run beforehand in the chain of tasks.
-
 
 $ExecuteTableSmellReport
 This scriptblock executes SQL that produces a report in XML or JSON from the database
@@ -137,7 +135,6 @@ and database, it uses it.
 $ExecuteTableSmellReport
 This scriptblock executes SQL that produces a report in XML or JSON from the database
 
-
 $FormatTheBasicFlywayParameters
 This provides the flyway parameters. This is here because it is useful for the 
 community flyway when you wish to do further Flyway actions after doing any
@@ -163,6 +160,28 @@ $SaveDatabaseModelIfNecessary
 This writes a JSON model of the database to a file that can be used subsequently
 to check for database version-drift or to create a narrative of changes for the
 flyway project between versions.
+
+$BulkCopyIn
+This script performs a bulk copy operation to get data into a database. It
+can only do this if the data is in a suitable directory. At the moment it assumes
+that you are using a DATA directory at the same level as the scripts directory. 
+BCP must have been previously installed in the path 
+Unlike many other tasks, you are unlikely to want to do this more than once for any
+database.If you did, you'd need to clear out the existing data first! It is intended
+for static scripts AKA baseline migrations.
+
+$BulkCopyout
+This script performs a bulk copy operation to get data out of a database, and
+into a suitable directory. At the moment it assumes that you wish to use a 
+DATA directory at the same level as the scripts directory. 
+BCP must have been previously installed in the path.
+
+$CreateUndoScriptIfNecessary
+this creates a first-cut UNDO script for the metadata (not the data) which can
+be adjusted and modified quickly to produce an UNDO Script. It does this by using
+SQL Compare to generate a  idepotentic script comparing the database with the 
+contents of the previous version.#>
+
 
 
 
@@ -1274,10 +1293,17 @@ $SaveDatabaseModelIfNecessary = {
 		if ([string]::IsNullOrEmpty($param1.$_))
 		{ $Problems += "no value for '$($_)'" }
 	}
-	$routine = "$($param1.ProjectFolder)\TheGloopDatabaseModel.sql"
+	try
+        {$routine = "$($param1.ProjectFolder)\TheGloopDatabaseModel.sql"
 	$escapedProject = ($Param1.project.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.', '-'
 	$MyDatabasePath = "$($env:USERPROFILE)\$ReportLocation$(
 		$EscapedProject)\$($param1.Version)\Reports"
+    if (Test-Path -PathType Leaf $MyDatabasePath)
+	{
+		# does the path to the reports directory exist as a file for some reason?
+		# there, so we delete it 
+		remove-Item $MyDatabasePath;
+	}
 	if (-not (Test-Path -PathType Container $MyDatabasePath))
 	{
 		# does the path to the reports directory exist?
@@ -1359,15 +1385,20 @@ $SaveDatabaseModelIfNecessary = {
 				}
 				catch
 				{
-					$Param1.Problems.'SaveDatabaseModelIfNecessary' += "could not convert the json object "
+                    $PSSourceCode >$MyOutputReport
+					$Param1.Problems.'SaveDatabaseModelIfNecessary' += "could not convert the json object"
 				}
 			}
 			if ($problems.Count -eq 0) {$Param1.Locations.'SaveDatabaseModelIfNecessary' = $MyOutputReport;}
 		}
 	}
+}
+    catch {$Param1.Problems.'SavedDatabaseModelIfNecessary' +="$($PSItem.Exception.Message)"
+    }
+
 	if ($problems.Count -gt 0)
 	{
-		$Param1.Problems.'SaveDatabaseModelIfNecessary' += $problems;
+		$Param1.Problems.'SavedDatabaseModelIfNecessary' += $problems;
 	}
 }
 
@@ -1655,13 +1686,15 @@ function Process-FlywayTasks
         }
 		
 	}
-
 	#print out any errors and warnings. 
 	if ($DatabaseDetails.Problems.Count -gt 0) #list out every problem and which task failed
 	{
 		$DatabaseDetails.Problems.GetEnumerator() |
-		Foreach{ Write-warning "Problem! $($_.Key)---------"; $_.Value } |
-		foreach { write-warning "`t$_" }
+		   Foreach{ Write-warning "Problem! $($_.Key)---------"; $_.Value } |
+		      foreach { write-warning "`t$_" }
+        gci env:* | sort-object name| 
+           where {$_.Name -like 'FP*' -or $_.Name -like 'Fly*'}|
+              foreach {Write-warning "$($_.Name)=$($_.value)"}
 	}
 	if ($DatabaseDetails.Warnings.Count -gt 0) #list out exery warning and which task failed
 	{
@@ -1673,11 +1706,7 @@ function Process-FlywayTasks
 	$DatabaseDetails.Locations.GetEnumerator() |
 		Foreach{ Write-Output "For the $($_.Key), we saved the report in $($_.Value)" } 
 
-
-
-<#    $DatabaseDetails.locations|gm -MemberType Property|foreach{
-       "For the $($_.Name) we saved the result in $($databaseDetails.locations.($_.Name))"}#>
    }
 
 
-'scriptblocks and cmdlet loaded. V1.2.40'
+'scriptblocks and cmdlet loaded. V1.2.45'
