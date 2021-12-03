@@ -1,5 +1,12 @@
-﻿#run the library script, assuming it is in the project directory containing the script directory
-. "..\DatabaseBuildAndMigrateTasks.ps1"
+﻿# run the library script, assuming it is in the project directory containing the script directory
+if (Test-Path -path "..\..\common\DatabaseBuildAndMigrateTasks.ps1"-PathType Leaf)
+    {
+    . "..\..\common\DatabaseBuildAndMigrateTasks.ps1"
+    }
+else
+    {
+    . "..\DatabaseBuildAndMigrateTasks.ps1"
+    }
 
 #our regex for gathering variables from Flyway's URL
 $FlywayURLRegex =

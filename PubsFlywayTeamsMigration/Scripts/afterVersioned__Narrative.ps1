@@ -1,5 +1,12 @@
 ﻿# run the library script, assuming it is in the project directory containing the script directory
-. "..\DatabaseBuildAndMigrateTasks.ps1"
+if (Test-Path -path "..\..\common\DatabaseBuildAndMigrateTasks.ps1"-PathType Leaf)
+    {
+    . "..\..\common\DatabaseBuildAndMigrateTasks.ps1"
+    }
+else
+    {
+    . "..\DatabaseBuildAndMigrateTasks.ps1"
+    }
 # Before running this, you will need to have TheGloopDatabaseModel.sql in the same directory as 
 # DatabaseBuildAndMigrateTasks.ps1
 

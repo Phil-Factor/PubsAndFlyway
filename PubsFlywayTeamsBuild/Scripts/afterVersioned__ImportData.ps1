@@ -21,7 +21,15 @@ you're building
 
 
 run the library script, assuming it is in the project directory containing the script directory #>
-. "..\DatabaseBuildAndMigrateTasks.ps1"
+# run the library script, assuming it is in the project directory containing the script directory
+if (Test-Path -path "..\..\common\DatabaseBuildAndMigrateTasks.ps1"-PathType Leaf)
+    {
+    . "..\..\common\DatabaseBuildAndMigrateTasks.ps1"
+    }
+else
+    {
+    . "..\DatabaseBuildAndMigrateTasks.ps1"
+    }
 
 <# The most useful data passed to this script by Flyway is the URL that you used to call Flyway. This
 is likely to tell you the server, port, database and the type of database (RDBMS). We can use the URL

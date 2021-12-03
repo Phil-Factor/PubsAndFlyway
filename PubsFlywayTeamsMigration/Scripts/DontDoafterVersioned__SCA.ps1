@@ -1,7 +1,12 @@
 ﻿# run the library script, assuming it is in the project directory containing the script directory
-"First load"
-. "..\DatabaseBuildAndMigrateTasks.ps1"
-"loaded tasks"
+if (Test-Path -path "..\..\common\DatabaseBuildAndMigrateTasks.ps1"-PathType Leaf)
+    {
+    . "..\..\common\DatabaseBuildAndMigrateTasks.ps1"
+    }
+else
+    {
+    . "..\DatabaseBuildAndMigrateTasks.ps1"
+    }
 <#To set off any task, all you need is a PowerShell script that is created in such a way that it can be executed by Flyway when it finishes a migration run. Although you can choose any of the significant points in any Flyway action, there are only one or two of these callback points that are useful to us.  This can be a problem if you have several chores that need to be done in the same callback or you have a stack of scripts all on the same callback, each having to gather up and process parameters, or pass parameters such as the current version from one to another. 
 
  The most useful data passed to this script by Flyway is the URL that you used to call Flyway. This is likely to tell you the server, port, database and the type of database (RDBMS). We can use the URL. If we just want to make JDBC calls. We can't and don't. Instead we extract the connection details and use these. 
