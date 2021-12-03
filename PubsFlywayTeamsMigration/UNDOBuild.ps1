@@ -1,4 +1,11 @@
-﻿Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-8.0.1\flyway.cmd' -Scope local
+﻿#Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-8.0.2\flyway.cmd' -Scope local
+$FlywayCommand=(Get-Command "Flyway" -ErrorAction SilentlyContinue)
+if ($null -eq $FlywayCommand) {
+    throw "This script requires Flyway to be installed and available on a PATH or via an alias"
+}
+if ($FlywayCommand.CommandType -eq 'Application' -and $FlywayCommand.Version -lt [version]'8.0.1.0') {
+    throw "Your Flyway Version is too outdated to work"
+}
 
 <# tell PowerShell where Flyway is. You need to change that to the correct path for your installation.
 You only need to do this if your flyway installation has not provideded a path cvommand #>

@@ -6,7 +6,14 @@ $VerbosePreference= 'continue'
 #create an alias for the commandline Flyway, 
 #Set-Alias Flyway  'MyPathTo\flyway.cmd' -Scope local
 #create an alias for the commandline Flyway, 
-Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-7.3.1\flyway.cmd' -Scope local
+#Set-Alias Flyway  'C:\ProgramData\chocolatey\lib\flyway.commandline\tools\flyway-8.0.2\flyway.cmd' -Scope local
+$FlywayCommand=(Get-Command "Flyway" -ErrorAction SilentlyContinue)
+if ($null -eq $FlywayCommand) {
+    throw "This script requires Flyway to be installed and available on a PATH or via an alias"
+}
+if ($FlywayCommand.CommandType -eq 'Application' -and $FlywayCommand.Version -lt [version]'8.0.1.0') {
+    throw "Your Flyway Version is too outdated to work"
+}
 
 if (!(test-path  ((Get-alias -Name Flyway).definition) -PathType Leaf))
 { Write-error "Sorry, but you need a path to the Flyway Commandline" }
