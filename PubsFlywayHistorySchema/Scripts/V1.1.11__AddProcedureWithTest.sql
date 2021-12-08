@@ -1,3 +1,22 @@
+PRINT 'You may not be able to see this'
+/*Raiserror (N'this first message is sent as state 9,1',9,1);--sent as message
+Raiserror (N'this second message is sent as state 10,2',10,2);--sent as message
+Raiserror (N'this third message is sent as state 11,1',11,1);
+Raiserror (N'this fourth message is sent as state 12,2',12,2);
+Raiserror (N'this fifth message is sent as state 13,1',13,1);
+Raiserror (N'this sixth message is sent as state 14,2',14,2);
+Raiserror (N'this seventh message is sent as state 15,7',15,7);
+Raiserror (N'this eighth message is sent as state 16,8',16,8);
+Raiserror (N'this ninth message is sent as state 17,1',17,1);
+Raiserror (N'this tenth message is sent as state 18,2',18,2);
+Raiserror (N'this eleventh message is sent as state 18,3',18,3);
+Raiserror (N'this twelveth message is sent as state 18,4',18,4);
+Raiserror (N'this thirteenth message is sent as state 18,5',18,5);
+Raiserror (N'this message is sent as state 18,6',18,6);
+Raiserror (N'this message is sent as state 18,7',18,7);
+Raiserror (N'this message is sent as state 18,8',18,8);
+PRINT N'Creating [dbo].[SplitStringToWords] function'*/
+
 go
 CREATE FUNCTION [dbo].[SplitStringToWords] (@TheString NVARCHAR(MAX))
 /**

@@ -1,11 +1,3 @@
-/*
-USE Pubsone
---ensure that you are in a transaction
-IF @@TranCount=0 
-	BEGIN TRANSACTION
-ELSE
-	PRINT 'Already in a transaction'
-*/
 --only create the People schema if it does not exist
 IF EXISTS (SELECT * FROM sys.schemas WHERE schemas.name LIKE 'People') SET NOEXEC ON;
 GO
