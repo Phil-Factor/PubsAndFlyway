@@ -1519,15 +1519,11 @@ $BulkCopyIn = {
 	{
 		#now we know the version we get a list of the tables.
 		$Tables = $GetdataFromSQLCMD.Invoke($Param1, @"
-SET NOCOUNT ON;
-DECLARE @json NVARCHAR(MAX);
-SELECT @json =
-  (SELECT Object_Schema_Name (object_id) AS [Schema], name
+SELECT Object_Schema_Name (object_id) AS [Schema], name
      FROM sys.tables
      WHERE
      is_ms_shipped = 0 AND name NOT LIKE 'Flyway%'
-  FOR JSON AUTO);
-SELECT @json;
+  FOR JSON AUTO
 "@) | ConvertFrom-Json
 		Write-verbose "Reading data in from $DirectoryToLoadFrom"
 		if ($Tables.Error -ne $null)
@@ -1602,15 +1598,11 @@ $BulkCopyOut = {
 	
 	#now we know the version we get a list of the tables.
 	$Tables = $GetdataFromSQLCMD.Invoke($param1, @"
-SET NOCOUNT ON;
-DECLARE @json NVARCHAR(MAX);
-SELECT @json =
-  (SELECT Object_Schema_Name (object_id) AS [Schema], name
+SELECT Object_Schema_Name (object_id) AS [Schema], name
      FROM sys.tables
      WHERE
      is_ms_shipped = 0 AND name NOT LIKE 'Flyway%'
-  FOR JSON AUTO);
-SELECT @json;
+  FOR JSON AUTO
 "@) | ConvertFrom-Json
 	Write-verbose "Reading data in from $DirectoryToLoadFrom"
 	if ($Tables.Error -ne $null)
