@@ -1,5 +1,5 @@
 ﻿# run the library script, assuming it is in the project directory containing the script directory
-if (Test-Path -path "..\..\common\DatabaseBuildAndMigrateTasks.ps1"-PathType Leaf)
+if (Test-Path -path "..\..\resources\DatabaseBuildAndMigrateTasks.ps1"-PathType Leaf)
     {
     . "..\..\common\DatabaseBuildAndMigrateTasks.ps1"
     }
