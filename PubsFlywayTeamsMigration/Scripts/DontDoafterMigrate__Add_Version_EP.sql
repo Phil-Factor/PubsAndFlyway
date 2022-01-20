@@ -1,7 +1,7 @@
 DECLARE @Version VARCHAR(20); -- the database version after a migration run. 
 SELECT @Version=[version] --we need to find the greatest successful version.
-  FROM ${flyway:defaultSchema}.flyway_schema_History -- 
-  WHERE installed_rank = (SELECT Max(Installed_Rank) FROM ${flyway:defaultSchema}.flyway_schema_History WHERE success = 1);
+  FROM ${flyway:defaultSchema}.${flyway:table}  -- 
+  WHERE installed_rank = (SELECT Max(Installed_Rank) FROM ${flyway:defaultSchema}.${flyway:table}  WHERE success = 1);
 PRINT N'Recording the database''s version number - '+@version;
 DECLARE @Database NVARCHAR(3000);
 SELECT @Database = N'${flyway:database}';
