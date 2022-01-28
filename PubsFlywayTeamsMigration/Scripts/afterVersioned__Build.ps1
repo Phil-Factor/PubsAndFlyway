@@ -22,10 +22,10 @@ passed by custom placeholders, such as the version of the RDBMS, or the current 
 you're building
 
 
-The ". '.\preliminary.ps1" line that this callback startes withcreates a DBDetails array.
+The ". '.\preliminary.ps1" line that this callback startes with creates a DBDetails array.
 You can dump this array for debugging so that it is displayed by Flyway
 
-$DBDetails|convertTo-json
+DBDetails|convertTo-json
 
 these routines return the path they write to 
 in the $DatabaseDetails if you need it.
@@ -35,9 +35,12 @@ $SQLCmdAlias in ..\DatabaseBuildAndMigrateTasks.ps1
 below are the tasks you want to execute. Some, like the on getting credentials, are essential befor you
 execute others
 in order to execute tasks, you just load them up in the order you want. It is like loading a 
-revolver. 
-#>
+revolver. #>
+
+
 $PostMigrationTasks = @(
+	$FetchAnyRequiredPasswords, #checks the hash table to see if there is a username without a password.
+    #if so, it fetches the password from store or asks you for the password if it is a new connection
 	$GetCurrentVersion, #checks the database and gets the current version number
     #it does this by reading the Flyway schema history table. 
 	$CreateBuildScriptIfNecessary, #writes out a build script if there isn't one for this version. This
@@ -58,9 +61,5 @@ $PostMigrationTasks = @(
     #This writes out a model of the version for purposes of comparison, narrative and checking. 
     $CreateUndoScriptIfNecessary # uses SQL Compare
     #Creates a first-cut UNDo script. This is an idempotentic script that undoes to the previous version 
-    $GeneratePUMLforGanttChart
-    # This script creates a PUML file for a Gantt chart at the current version of the 
-    #database. This can be read into any editor that takes PlantUML files to give a Gantt
-    #chart 
-            )
+    )
 Process-FlywayTasks $DBDetails $PostMigrationTasks
