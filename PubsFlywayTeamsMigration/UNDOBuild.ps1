@@ -1,4 +1,4 @@
-﻿cd S:\work\Github\PubsAndFlyway\PubsFlywayTeamsMigration
+﻿cd S:\work\Github\FlywayTeamwork\Pubs\branches\develop
 . '.\preliminary.ps1'
 
 <# now we use the GetdataFromSQLCMD scriptblock to determine the version number and name from SQL Server.
@@ -47,7 +47,7 @@ Flyway $pword migrate  '-target=1.1.11'
 if (Test-Path Env:FLYWAY_PLACEHOLDERS_CANDOJSON )  {remove-item Env:FLYWAY_PLACEHOLDERS_CANDOJSON}
 if (Test-Path Env:FLYWAY_PLACEHOLDERS_canDoStringAgg ) {remove-item Env:FLYWAY_PLACEHOLDERS_canDoStringAgg}
 
-
+Flyway $pword '-url=jdbc:sqlserver://Philf01;databaseName=PubsDev' '-placeholders.canDoStringAgg=false' migrate
 
 
 
