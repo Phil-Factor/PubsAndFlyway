@@ -51,11 +51,12 @@ $Reportdirectory= if ([string]::IsNullOrEmpty($FileLocations.Reportdirectory))
 #$ReportLocation is used for the branch version
 $ReportLocation="$pwd\$VersionsPath"# part of path from user area to project artefacts folder location 
 
-
 #look for the common resources directory for all assets such as modules that are shared
 $dir = $pwd.Path; $ii = 10; # $ii merely prevents runaway looping.
 $Branch = Split-Path -Path $pwd.Path -leaf;
 $structure='classic'
+if ( (dir "$pwd" -Directory|where {$_.Name -eq 'Branches'}) -ne $null)
+    {$structure='branch'}
 while ($dir -ne '' -and -not (Test-Path "$dir\$ResourcesPath" -PathType Container
 	) -and $ii -gt 0)
 {
@@ -78,6 +79,11 @@ if ($dir -eq '') { throw "no resources directory found" }
 dir "$Dir\$ResourcesPath\*.ps1" | foreach{ . "$($_.FullName)" }
 if ((Get-Command "GetorSetPassword" -erroraction silentlycontinue) -eq $null)
     {Throw "The Flyway library wan't read in from $("$Dir\$ResourcesPath")"}
+
+#find any SQL Compare filters
+$Filterpath =$null
+if (Test-Path "$Dir\$ResourcesPath\*.scpf"  -PathType leaf)
+{$Filterpath= dir "$Dir\$ResourcesPath\*.scpf" |select -first 1|foreach{$_.FullName}}
 
 <# We now know the project name ($project) and the name of the branch (Branch), and have installed all the resources
 
@@ -103,9 +109,10 @@ Now we check that the directories and files that we need are there #>
 $FlywayConfContent=@()
 $FlywayKeys = (Get-Content "flyway.conf")  |
 where { ($_ -notlike '#*') -and ("$($_)".Trim() -notlike '') } |
+    foreach{$_ -replace '\\','\\'}|
     ConvertFrom-StringData -OutVariable FlywayConfContent|foreach {$_.keys}
 Get-content "$env:userProfile\flyway.conf" |where { ($_ -notlike '#*') -and ("$($_)".Trim() -notlike '') }|
-ConvertFrom-StringData|foreach{
+foreach{$_ -replace '\\','\\'}|ConvertFrom-StringData|foreach{
     if (!($_.Keys -in $FlywayKeys)) 
         {$FlywayConfContent+=$_}
     }
@@ -115,7 +122,7 @@ ConvertFrom-StringData|foreach{
 if (!([string]::IsNullOrEmpty($FlywayConfContent.'flyway.url')))
 {
 	$FlywayURLRegex =
-	'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w\-\.]{1,40})(?<port>:[\d]{1,4}|)(;.*databaseName=|/)(?<database>[\w]{1,20})';
+	'jdbc:(?<RDBMS>[\w]{1,20})://(?<server>[\w\\\-\.]{1,40})(?<port>:[\d]{1,4}|)(;.*databaseName=|/)(?<database>[\w]{1,20})';
 	$FlywaySimplerURLRegex = 'jdbc:(?<RDBMS>[\w]{1,20}):(?<database>[\w:\\/\.]{1,80})';
 	#this FLYWAY_URL contains the current database, port and server so
 	# it is worth grabbing
@@ -149,7 +156,8 @@ if (!([string]::IsNullOrEmpty($FlywayConfContent.'flyway.url')))
 $DBDetails = @{
     'RDBMS'= $RDBMS; 
 	'server' = $server; #The Server name
-    'directoryStructure'=$structure
+    'directoryStructure'=$structure;
+    'filterpath'=$filterpath
 	'database' = $database; #The Database
 	'migrationsPath' = $migrationsPath; #where the migration scripts are stored- default to Migrations
 	'resourcesPath' = $resourcesPath; #the directory that stores the project-wide resources
@@ -163,6 +171,7 @@ $DBDetails = @{
 	'uid' = $FlywayConfContent.'flyway.user'; #The User ID. you only need this if there is no domain authentication or secrets store #>
 	'pwd' = ''; # The password. This gets filled in if you request it
 	'version' = ''; # TheCurrent Version. This gets filled in if you request it
+    'previous'=''; # The previous Version. This gets filled in if you request it
 	'flywayTable' = 'dbo.flyway_schema_history';#this gets filled in later
 	'branch' = $branch;
 	'schemas' = 'dbo,classic,people';
@@ -222,3 +231,4 @@ $defaultSchema = if ([string]::IsNullOrEmpty($DBDetails.'defaultSchema'))
                      else {"$($DBDetails.'defaultSchema')"}
 $defaultTable = if ([string]::IsNullOrEmpty($DBDetails.'table')) {'flyway_schema_history'} else {"$($DBDetails.'table')"}
 $DBDetails.'flywayTable'="$($defaultSchema)$(if ($defaultSchema.trim() -in @($null,'')){''}else {'.'})$($defaultTable)"
+$env:FLYWAY_PASSWORD=$DBDetails.Pwd
