@@ -19,13 +19,13 @@ As well as being run in a series, they can be used individually. If one of them 
 The reason for using this design was to make it easy to choose what gets run and in what order. 
 
 **$CheckCodeInDatabase** *(SQL Server only)*
-This scriptblock checks the code in the database for any issues, using SQL Code Guard to do all the work. This runs SQL Codeguard  and saves the report in a subdirectory the version directory of your project artefacts. It also reports back in the **$param1** Hashtable. It checks the current database, not the scripts
+This scriptblock checks the code in the database for any issues, using SQL Code Guard to do all the work. This runs SQL Codeguard  and saves the report in a subdirectory the version directory of your project artefacts. It also reports back in the **$dbDetails** Hashtable. It checks the current database, not the scripts
 
 **$CheckCodeInMigrationFiles** *(SQL Server only)*
 This scriptblock checks the code in the migration files for any issues, using SQL Code Guard to do all the work. This runs SQL Codeguard and saves the report in a subdirectory the version directory of your 
-project artefacts. It also reports back in the **$param1** Hashtable. It checks the scripts not the current database.
+project artefacts. It also reports back in the **$dbDetails** Hashtable. It checks the scripts not the current database.
 
-**$CreateScriptFoldersIfNecessary**: *(SQL Server, SQLite, MySQL, MariaDB, PostgreSQL)*
+**$CreateScriptFoldersIfNecessary**: *(SQL Server, Oracle, SQLite, MySQL, MariaDB, PostgreSQL)*
 this task checks to see if a Source folder already exists for this version of the database and, if not, it will create one and fill it with subdirectories for each type of object. A tables folder will, for example, have a file for every table each containing a build script to create that object. When this exists, it allows SQL Compare
 to do comparisons and check that a version has not drifted. It saves the Source folder as a subfolder for the supplied version, so it needs **$GetCurrentVersion** to have been run beforehand in the chain of tasks.
 
@@ -45,17 +45,17 @@ This checks the hash table to see if there is a username without a password. If 
 **$ExecuteTableSmellReport** *(SQL Server only)*
 This scriptblock executes SQL that produces a report in XML or JSON from the database
 
-**$GetCurrentVersion** *(PostgreSQL, MySQL, MariaDB,SQL Server, SQLite)*
+**$GetCurrentVersion** *(PostgreSQL, Oracle, MySQL, MariaDB,SQL Server, SQLite)*
 This contacts the database and determines its current version, and previous version by interrogating the flyway_schema_history data table in the database. If it is an empty database,or there is just no Flyway data, then it returns a version of 0.0.0.
 
-**$GetCurrentServerVersion** *(PostgreSQL, MySQL, MariaDB,SQL Server, SQLite)*
+**$GetCurrentServerVersion** *(PostgreSQL, Oracle, MySQL, MariaDB,SQL Server, SQLite)*
 This scriptblock gets the current version of the RDBMS on the server and is used mainly to check that the migration doesn't use any functionality that can't be supported on that server version. It updates
-the $Param1.ServerVersion 
+the $dbDetails.ServerVersion 
 
 **$IsDatabaseIdenticalToSource:** *(SQL Server only)*
 This uses SQL Compare to check that a version of a database is correct and hasn't been changed. To do this, the $CreateScriptFoldersIfNecessary task must have been run first. It compares the database to the associated source folder, for that version, and returns, in the hash table, the comparison equal to true if it was the same, or false if there has been drift, with a list of objects that have changed. If the comparison returns $null, then it means there has been an error. To access the right source folder for this database version, it needs $GetCurrentVersion to have been run beforehand in the chain of tasks
 
-**$SaveDatabaseModelIfNecessary** *(PostgreSQL, MySQL, MariaDB,SQL Server, SQLite)*
+**$SaveDatabaseModelIfNecessary** *(PostgreSQL,  Oracle, MySQL, MariaDB,SQL Server, SQLite)*
 This writes a JSON model of the database to a file that can be used subsequently to check for database version-drift or to create a narrative of changes for the flyway project between versions.
 
 **$BulkCopyIn** *(SQL Server only)*
@@ -79,11 +79,17 @@ This creates a forward migration that scripts out all the changes made to the da
 **$SaveFlywaySchemaHistoryIfNecessary** *(all RDBMSs)*
 This reads the flyway history table, and uses the information to annotate the directories containing the various reports and scripts for that version
 
-**$CreateVersionNarrativeIfNecessary** *(PostgreSQL, MySQL, MariaDB, SQL Server, SQLite)*
+**$CreateVersionNarrativeIfNecessary** *(PostgreSQL, Oracle, MySQL, MariaDB, SQL Server, SQLite)*
 This aims to tell you what has changed between each version of the database. 
 
-**$WriteOutERDiagramCode** *(PostgreSQL, MySQL, MariaDB, SQL Server, SQLite)*
+**$WriteOutERDiagramCode** *(PostgreSQL,  Oracle, MySQL, MariaDB, SQL Server, SQLite)*
 This creates a simple entity diagram for the current version. You only need two files to do this and you don't need to contact the database. The ER diagram has all objects that are either added, removed or changed colour-coded so you can see immediately what has changed. The idea of this is to be able to paste the resulting SVG file or other image file of the diagram, produced by PlantUMLc.exe.
+
+**$CheckFluffInPendingFiles** *(PostgreSQL,  Oracle, MySQL, MariaDB, SQL Server, SQLite)*
+This scriptblock checks the code in the pending files for any issues,using SQL Fluff to do all the work. It saves the report in a subdirectory 
+of the version directory of your project artefacts. It also reports back in the $DatabaseDetails Hashtable. 
+
+
 
 
 ## examples of usage
@@ -103,17 +109,17 @@ Here are several being done together
 	`#later use for comparing versions to create a chronicle of changes.`
 	`$CreateVersionNarrativeIfNecessary,`
     `#save the information from the history table about when all the changes were made and by whom
-â€‹    `$SaveFlywaySchemaHistoryIfNecessary`
+‹    `$SaveFlywaySchemaHistoryIfNecessary`
 `)`
-`Process-FlywayTasks $param1 $PostMigrationTasks`
-â€‹	`}`
+`Process-FlywayTasks $dbDetails $PostMigrationTasks`
+‹	`}`
 `}`
 ```
 
 here is one scriptblock being done
 
 ``` 
-Process-FlywayTasks $param1 $GetCurrentServerVersion 
+Process-FlywayTasks $dbDetails $GetCurrentServerVersion 
 ```
 
 Some scriptblocks have extra parameters that allow them to be used more freely. 
@@ -169,7 +175,6 @@ You might not want all the project array because you're just generating diagrams
 
 #>
 
-
 $GetdataFromSqlite = { <# a Scriptblock way of accessing SQLite via a CLI to get JSON-based  results 
 without having to explicitly open a connection. it will take either SQL files or queries.  #>
 	Param (
@@ -177,20 +182,24 @@ without having to explicitly open a connection. it will take either SQL files or
 		#this is the same ubiquitous hashtable 
 		$query,
 		#a query. If a file, put the path in the $fileBasedQuery parameter
-		$fileBasedQuery = $null) # $GetdataFromSqlite: (Don't delete this)
+		$fileBasedQuery = $null,
+		$simpleText = $false,
+		$timing = $false,#do you return timing information
+        $muted = $false #do you return the data
+        ) # $GetdataFromSqlite: (Don't delete this)
 	$problems = @()
-    $command=$null;
-    $command = get-command sqlite -ErrorAction Ignore 
+	$command = $null;
+	$command = get-command sqlite -ErrorAction Ignore
 	if ($command -eq $null)
-	  {  
-         if ($sqliteAlias -ne $null)
-        {Set-Alias sqlite $sqliteAlias}
-    else
-        {$problems += 'You must have provided a path to sqlite.exe in the ToolLocations.ps1 file in the resources folder'}
-    }
+	{
+		if ($sqliteAlias -ne $null)
+		{ Set-Alias sqlite $sqliteAlias }
+		else
+		{ $problems += 'You must have provided a path to sqlite.exe in the ToolLocations.ps1 file in the resources folder' }
+	}
 	
 	if ($TheArgs.Database -in @($null, '')) # do we have the necessary values
-    { $problems += "Can't do this: no value for the database" }
+	{ $problems += "Can't do this: no value for the database" }
 	
 	if ($problems.Count -eq 0)
 	{
@@ -199,46 +208,76 @@ without having to explicitly open a connection. it will take either SQL files or
 		{ $TempInputFile = $FileBasedQuery }
 		else
 		{ [System.IO.File]::WriteAllLines($TempInputFile, $query); }
-		
+		if ($timing)
+		{ $AreWeTiming = 'on'; }
+		else
+		{ $AreWeTiming = 'off'; }
 		$params = @(
 			'.bail on',
+			".timer $AreWeTiming",
 			'.mode json',
 			'.headers off',
 			#".output $($TempOutputFile -replace '\\','/')",
 			".read $($TempInputFile -replace '\\', '/')",
 			'.quit')
-        
 		try
 		{
-			$result = sqlite "$($param1.database)" @Params
+			$result = (sqlite "$($Theargs.database)" @Params) -join "`n`r"
 		}
 		catch
 		{ $problems += "SQL called to SQLite  failed because $($_)" }
-        if ($?) { $result }
-        else {$problems +='The SQL Call to SQLite failed'}
+		
+		if ($?)
+		{
+			# we had a good result so maybe cope with timings, otherwise just the result
+			if ($timing)
+			{
+				$regex = 'Run Time: real (?<RealTime>[\d\.]{1,20})\s{1,10}user (?<UserTime>[\d\.]{1,20})\s{1,10}sys\s{1,10}(?<SystemTime>[\d\.]{1,20})'
+				
+				if ($result -imatch $regex)
+				{
+					$timingData = [pscustomobject]$matches | convertto-json
+					if (!($muted)) {($result -replace $regex, '').Trim()};
+					write-output "the transaction in '$Query' took $([decimal]([pscustomobject]$matches.RealTime)*1000) ms."
+				}
+				else
+				{
+					$timingData = '';
+					if (!($muted)) {$result};
+				}
+			}
+			else
+			{ $result }
+		}
+		else { $problems += 'The SQL Call to SQLite failed' }
 		if ([string]::IsNullOrEmpty($FileBasedQuery)) { Remove-Item $TempInputFile }
 	}
-if ($problems.Count -gt 0) { $Param1.Problems.'GetdataFromSqlite' = $problems }
+	if ($problems.Count -gt 0) { $Param1.Problems.'GetdataFromSqlite' = $problems }
 }
 
 #This is a utility scriptblock used by the task scriptblocks.
-#with SQL Server, you really want your datab back as JSN, but SQLcmd can't do it.
+#with SQL Server, you really want your data back as JSON, but SQLcmd can't do it.
 $GetdataFromSQLCMD = {<# a Scriptblock way of accessing SQL Server via a CLI to get JSON results without having to 
 explicitly open a connection. it will take SQL files and queries. It will also deal with simple SQL queries if you
-set 'simpleText' to true #>
+set 'simpleText' to true 
+#>
 	Param ($Theargs,
 		#this is the same ubiquitous hashtable 
 		$query,
 		#either a query that returns JSON, or a simple expression
 		$fileBasedQuery = $null,
 		#if you specify input from a file
-		$simpleText = $false) # $GetdataFromSQLCMD: (Don't delete this)
+		$simpleText = $false,
+        $timing = $false,#do you return timing information
+        $muted = $false #do you return the data
+        ) # $GetdataFromSQLCMD: (Don't delete this)
 	$problems = @();
+    $SQLQuery=$query;
 	if ([string]::IsNullOrEmpty($TheArgs.server) -or [string]::IsNullOrEmpty($TheArgs.database))
 	{ $Problems += "Cannot continue because name of either server ('$($TheArgs.server)') or database ('$($TheArgs.database)') is not provided"; }
 	else
 	{
-		#the alias must be set to the path of your installed version of SQL Compare
+		#the alias must be set to the path of your installed version of SQL Cmd
         $command=$null;
         $command = get-command SQLCmd -ErrorAction Ignore 
 		if ($command -eq $null)
@@ -249,15 +288,19 @@ set 'simpleText' to true #>
 			{ $problems += 'You must have provided a path to SQLcmd.exe in the ToolLocations.ps1 file in the resources folder' }
 		}
 		$TempOutputFile = "$($env:Temp)\TempOutput$(Get-Random -Minimum 1 -Maximum 900).json"
-		if (!($simpleText))
+        if ($timing) {$profile='-p1'} else {$profile=''}  #add the timing switch
+		if ($simpleText -or $timing)
 		{
-			$FullQuery = "Set nocount on; Declare @Json nvarchar(max) 
-        Select @Json=($query) Select @JSON"
+		$FullQuery = "$query"
 		}
 		else
-		{ $FullQuery = $query };
+		{
+		$FullQuery = "Set nocount on;SET QUOTED_IDENTIFIER ON; Declare @Json nvarchar(max) 
+        Select @Json=($query) Select @JSON"
+        };
 		if (!([string]::IsNullOrEmpty($FileBasedQuery))) #if we've been passed a file ....
-		{ $TempInputFile = $FileBasedQuery }
+		{ $TempInputFile = $FileBasedQuery;
+          $SQLQuery=  Split-Path $FileBasedQuery -Leaf}
 		else
 		{ $TempInputFile = "$($env:Temp)\TempInput.sql" }
 		#If we can't pass a query string directly, or we have a file ...
@@ -270,13 +313,14 @@ set 'simpleText' to true #>
 			{
 				sqlcmd -S $TheArgs.server -d $TheArgs.database `
 					   -i $TempInputFile -U $TheArgs.Uid -P $TheArgs.pwd `
-					   -o "$TempOutputFile" -u -y0
+					   -o "$TempOutputFile" -u -y0 -b $profile
 			}
 			else #we are using integrated security
 			{
 				sqlcmd -S $TheArgs.server -d $TheArgs.database `
-					   -i $TempInputFile -E -o "$TempOutputFile" -u -y0
+					   -i $TempInputFile -E -o "$TempOutputFile" -u -y0 -b $profile
 			}
+            $Succeeded=$?
 			#if it is just for storing a query
 			if ([string]::IsNullOrEmpty($FileBasedQuery)) { Remove-Item $TempInputFile }
 		}
@@ -287,21 +331,54 @@ set 'simpleText' to true #>
 			{
 				sqlcmd -S $TheArgs.server -d $TheArgs.database `
 					   -Q "`"$FullQuery`"" -U $TheArgs.uid -P $TheArgs.pwd `
-					   -o `"$TempOutputFile`" -u -y0
+					   -o `"$TempOutputFile`" -u -y0 -b $profile
 			}
 			else #we are using integrated security
 			{
 				sqlcmd -S $TheArgs.server -d $TheArgs.database `
-					   -Q "`"$FullQuery`"" -o `"$TempOutputFile`" -u -y0
+					   -Q "`"$FullQuery`"" -o `"$TempOutputFile`" -u -y0 -b $profile
 			}
+            $Succeeded=$?
 		}
-		If (Test-Path -Path $TempOutputFile)
+        If (Test-Path -Path $TempOutputFile)
 		{
 			#make it easier for the caller to read the error
 			$response = [IO.File]::ReadAllText($TempOutputFile);
-			Remove-Item $TempOutputFile
-			if ($response -like 'Msg*')
-			{ $Problems += "$($TheArgs.database) says $Response" }
+            Remove-Item $TempOutputFile
+
+        if ($timing)            # if there was timing data appended
+	        {
+            $regex = '(?<PacketSize>\d{1,6}):(?<NoTransactions>\d{1,6}):(?<TotalTime>[.\d]{1,20}):(?<AverageTime>[.\d]{1,20}):(?<AverageTPS>[.\d]+)'
+	
+	            if ($response -imatch $regex)
+	            {
+		            $timingData = [pscustomobject]$matches | convertto-json
+		            $response= ($response -replace $regex, '').Trim()
+	            }
+	            else
+	            {
+		            $timingData = ''
+	            }
+	            if ($timingData -ne '')
+	            {
+		            $TimingHashTable = $TimingData | convertfrom-JSON
+		            if ($TimingHashTable.NoTransactions -gt 1)
+		            {
+			            write-output "the $($TimingHashTable.NoTransactions) transactions in  '$SQLQuery' took a total of  $($TimingHashTable.TotalTime) ms."
+		            }
+		            elseif ($TimingHashTable.NoTransactions -eq 1)
+		            {
+			            write-output "the transaction in '$SQLQuery' took  $($TimingHashTable.TotalTime) ms."
+		            }
+		            else
+		            {
+			            Write-Output "there were no transactions to time in $SQLQuery"
+		            }
+	            }
+            }
+
+    		if ($response -like 'Msg*' -or !($succeeded))
+			{ $Problems += " When connecting to $($TheArgs.server); $($TheArgs.database) as $($TheArgs.uid) had error $Response" }
 			elseif ($response -like 'SqlCmd*')
 			{ $problems += "SQLCMD says $Response" }
 			
@@ -310,7 +387,7 @@ set 'simpleText' to true #>
 			elseif ($response -like 'NULL*')
 			{ '' }
 			else
-			{ $response }
+			{ if (!($muted)) {$response} }
 		}
 	}
 }
@@ -326,11 +403,15 @@ explicitly open a connection. it will take either SQL files or queries.  #>
 		#a query. If a file, put the path in the $fileBasedQuery parameter
 
 		$fileBasedQuery = $null,
-		$simpleText = $false) # $GetdataFromMySQL: (Don't delete this)
+		$simpleText = $false,
+		$timing = $false,
+		#do you return timing information
+		$muted = $false #do you return the data
+	) # $GetdataFromMySQL: (Don't delete this)
 	$problems = @()
 	
-    $command=$null;
-    $command = get-command Mysql -ErrorAction Ignore 
+	$command = $null;
+	$command = get-command Mysql -ErrorAction Ignore
 	if ($command -eq $null)
 	{
 		if ($MySQLAlias -ne $null)
@@ -348,102 +429,366 @@ explicitly open a connection. it will take either SQL files or queries.  #>
 		{ $TempInputFile = $FileBasedQuery }
 		else
 		{ [System.IO.File]::WriteAllLines($TempInputFile, $query); }
+		if ($timing) { $timingParameter = '-vvv' }
+		else { $timingParameter = '' }
 		Try
 		{
 			
-			$HTML = ([IO.File]::ReadAllText("$TempInputFile") | mysql "--host=$($TheArgs.server)" "--port=$($TheArgs.Port -replace '[^\d]', '')" "--show-warnings" "--password=$($TheArgs.pwd)"  "--user=$($TheArgs.uid)" '--comments'  '--html')
+			$HTML = ([IO.File]::ReadAllText("$TempInputFile") | mysql "$($TheArgs.database)" "--host=$($TheArgs.server)" "--port=$($TheArgs.Port -replace '[^\d]', '')" "--show-warnings" "--password=$($TheArgs.pwd)"  "--user=$($TheArgs.uid)" $timingParameter '--comments'  '--html')
 			if ($? -eq 0)
 			{
 				$problems += "The MySQL CLI returned an error $($error[0])"
 			}
 			$TheColumns = @();
-				$Rows = Select-String '<TR>(.*?)</TR>' -input $html -AllMatches | foreach{ $_.matches } | Foreach{
-					$Col = 0;
-					$lineValue = $_.Value
-					
-					if ($Thecolumns.count -eq 0)
-					{
-						$TheColumns = Select-String '<TH>(.*?)</TH>' -input $lineValue -AllMatches |
-						foreach{ $_.matches.groups } | where { $_.Name -eq 1 } | foreach{ $_.value }
-					}
-					else
-					{
-						$Row = [ordered]@{ };
-						Select-String '<TD>(.*?)</TD>' -input $LineValue -AllMatches |
-						foreach{ $_.matches.groups } | where { $_.Name -eq 1 } | foreach{
+			$Rows = Select-String '<TR>(.*?)</TR>' -input $html -AllMatches | foreach{ $_.matches } | Foreach{
+				$Col = 0;
+				$lineValue = $_.Value
+				
+				if ($Thecolumns.count -eq 0)
+				{
+					$TheColumns = Select-String '<TH>(.*?)</TH>' -input $lineValue -AllMatches |
+					foreach{ $_.matches.groups } | where { $_.Name -eq 1 } | foreach{ $_.value }
+				}
+				else
+				{
+					$Row = [ordered]@{ };
+					Select-String '<TD>(.*?)</TD>' -input $LineValue -AllMatches |
+					foreach{ $_.matches.groups } | where { $_.Name -eq 1 } | foreach{
+                        $currentValue=$_.value;
+                        if ($currentValue -eq 'null'){$currentValue = $null}
 						if ($TheColumns -is [string])
-                            {$Row += @{ $TheColumns = $_.value }}
-                        else
-							{$Row += @{ $TheColumns[$col++] = $_.value }}
+						{ $Row += @{ $TheColumns = $currentValue } }
+						else
+						{ $Row += @{ $TheColumns[$col++] = $currentValue } }
 						
-						}
-						$Row
 					}
-					
-				} | Where { $_.Count -gt 0 };
-			}
-			catch
-			{ $problems += "$MySQL query failed because $($_)" }
-			
-			$Rows | ConvertTo-Json
-			if ([string]::IsNullOrEmpty($FileBasedQuery)) {Remove-Item $TempInputFile};
+					$Row
+				}
+				
+			} | Where { $_.Count -gt 0 };
 		}
-	if ($problems.Count -gt 0) { $Theargs.Problems.'GetdataFromMySQL' += $problems }
+		catch
+		{ $problems += "$MySQL query failed because $($_)" }
+		if ($simpleText)
+		{ $Result = $Rows|foreach{[pscustomobject]$_}|Format-Table }
+		else
+		{ $Result = $Rows | ConvertTo-Json }
+		if ($timing)
+		{# we are getting timing data from the CLI tool
+			$TimingRegex = '</TABLE>(?<rows>\d{1,20})\s{1,5}rows in set \((?<RealTime>[\d\.]{1,20})'
+			if ($HTML -join '' -match $TimingRegex)
+			{# if we found the timing information
+				$timingData = [pscustomobject]$matches | convertto-json
+				write-output "the transaction in '$Query' took $([decimal]([pscustomobject]$matches.RealTime)*1000) ms."
+			}
+			else
+			{
+				$timingData = '';
+				
+			}
+			if (!($muted)) { $result };
+		}
+		else
+		{
+			$Result;
+		}
+		if ([string]::IsNullOrEmpty($FileBasedQuery)) { Remove-Item $TempInputFile };
 	}
-
-$GetdataFromPsql = {<# a Scriptblock way of accessing PosgreSQL via a CLI to get JSON-based  results without having to 
-explicitly open a connection. it will take either SQL files or queries.  #>
-	Param (
-        $Theargs, #this is the same ubiquitous hashtable 
-		$query, #a query. If a file, put the path in the $fileBasedQuery parameter
-        $fileBasedQuery=$null,
-        $simpleText=$false)  # $GetdataFromPsql: (Don't delete this)
- 
-    $problems=@()
-    $command=$null;
-    $command = get-command psql -ErrorAction Ignore 
-	if ($command -eq $null)
-        {    if ($psqlAlias -ne $null)
-        {Set-Alias psql $psqlAlias}
-    else
-        {$problems += 'You must have provided a path to psql in the ToolLocations.ps1 file in the resources folder'}
-        }
-    @('server', 'database', 'port','user','pwd') |
-	        foreach{ if ($TheArgs.$_ -in @($null,'')) { $problems += "Can't do this: no value for '$($_)'" } }
-    
-    if ($problems.Count -eq 0)
-    {
-	    $TempOutputFile = "$($env:Temp)\TempOutput$(Get-Random -Minimum 1 -Maximum 900).csv"
-        $TempInputFile = "$($env:Temp)\TempInput.sql"
-        if (!([string]::IsNullOrEmpty($FileBasedQuery))) #if we've been passed a file ....
-            {$TempInputFile=$FileBasedQuery}
-        else
-            {[System.IO.File]::WriteAllLines($TempInputFile, $query);}
-       Try
-        {
-        $Params=@(
-        "--dbname=$($TheArgs.database)",
-        "--host=$($TheArgs.server)",
-        "--username=$($TheArgs.user)",
-        "--password=$($TheArgs.pwd)",
-        "--port=$($TheArgs.Port -replace '[^\d]','')",
-        "--file=$TempInputFile",
-        '--tuples-only',
-        '-Pformat=unaligned',
-        "--no-password")
-        $env:PGPASSWORD="$($TheArgs.pwd)"
-        $result=psql @params
-        }
-        catch
-        {$problems += "$psql query failed because $($_)"}
-       if ($?)
-        {$result}
-       else {$problems += "The PSql CLI returned an error $($error[1])" }
-    }
-    if ($problems.Count -gt 0) {$Theargs.Problems.'GetdataFromPsql'+=$problems}
+	if ($problems.Count -gt 0) { $Theargs.Problems.'GetdataFromMySQL' += $problems }
+	if ($timing) { $Theargs.feedback.'FetchOrSaveDetailsOfParameterSet' += $timingData }
 }
 
+$GetdataFromPsql = {<# a Scriptblock way of accessing PosgreSQL via a CLI to get JSON-based  results without having to 
+explicitly open a connection. it will take either SQL files or queries.
+$query='SELECT  * FROM dbo.authors WHERE city=''Tacoma'';'
+#>
+	Param (
+		$Theargs,
+		#this is the same ubiquitous hashtable 
+		$query,
+		#a query. If a file, put the path in the $fileBasedQuery parameter
+		$fileBasedQuery = $null,
+		$simpleText = $false,
+		$timing = $false,
+		#do you return timing information
+		$muted = $false #do you return the data       
+	) # $GetdataFromPsql: (Don't delete this)
+	
+	$problems = @()
+	$command = $null;
+	$command = get-command psql -ErrorAction Ignore
+	if ($command -eq $null)
+	{
+		if ($psqlAlias -ne $null)
+		{ Set-Alias psql $psqlAlias }
+		else
+		{ $problems += 'You must have provided a path to psql in the ToolLocations.ps1 file in the resources folder' }
+	}
+	@('server', 'database', 'port', 'user', 'pwd') |
+	foreach{ if ($TheArgs.$_ -in @($null, '')) { $problems += "Can't do this: no value for '$($_)'" } }
+	
+	if ($problems.Count -eq 0)
+	{
+		$TempOutputFile = "$($env:Temp)\TempOutput$(Get-Random -Minimum 1 -Maximum 900).csv"
+		$TempInputFile = "$($env:Temp)\TempInput.sql"
+		if (!([string]::IsNullOrEmpty($FileBasedQuery))) #if we've been passed a file ....
+		{ $TempInputFile = $FileBasedQuery }
+		else
+		{ [System.IO.File]::WriteAllLines($TempInputFile, $query); }
+		Try
+		{
+			$Params = @(
+				"--command=\timing $(if ($timing) { 'on' } else { 'off' })",
+				"--dbname=$($TheArgs.database)",
+				"--host=$($TheArgs.server)",
+				"--username=$($TheArgs.user)",
+				"--password=$($TheArgs.pwd)",
+				"--port=$($TheArgs.Port -replace '[^\d]', '')",
+				"--file=$TempInputFile",
+				'--tuples-only',
+				'-Pformat=unaligned',
+				"--no-password")
+			$env:PGPASSWORD = "$($TheArgs.pwd)"
+			$result = (psql @params) -join "`r`n"
+        }
+		catch
+		{ $problems += "$psql query failed because $($_)" }
+		if ($?)
+		{
+		$result = ($result -replace 'Timing is (on|off)\.', '').trim();
 
+			if ($timing)
+			{
+				# we are getting timing data from the CLI tool
+				$TimingRegex = 'Time:\s{1,5}(?<RealTime>[\d\.]{1,20})\s{1,5}ms'
+				$result = $result -join "`r`n"; #in case it comes back as an array
+				if ($result -match $TimingRegex)
+				{
+					# if we found the timing information
+					$timingData = [pscustomobject]$matches | convertto-json
+					write-output "the transaction in '$Query' took $([pscustomobject]$matches.RealTime) ms."
+					$result = $result -replace $TimingRegex, '';
+				}
+				else
+				{
+					$timingData = '';
+					
+				}
+				if (!($muted)) { $result };
+			}
+			else
+			{
+				$Result;
+			}
+		}
+		else { $problems += "The PSql CLI returned an error $($error[1])" }
+	}
+	if ($problems.Count -gt 0) { $Theargs.Problems.'GetdataFromPsql' += $problems }
+}
+
+$GetdataFromOracle = {<# a Scriptblock way of accessing oracle via Oracle SQLcl to get JSON results without having to 
+explicitly open a connection. it will take SQL files and queries. 
+#>
+	Param ($Theargs,
+		#this is the same ubiquitous hashtable 
+
+		$query,
+		#either a query that returns JSON, or a simple expression
+
+		$fileBasedQuery = $null,
+		#if you specify input from a file
+
+		$simpleText = $false,
+		#do you return timing information
+
+		$timing = $false,
+		#do we just want the timing information?
+
+		$muted = $false #do you return the data
+	) # $GetdataFromOracle: (Don't delete this)
+	$problems = @();
+	#check to see that we have the requisites
+	$TheWallet = $TheArgs.ZippedWalletLocation;
+	$Theservice = $TheArgs.service
+	$TheUID = $TheArgs.uid
+	$ThePassword = $TheArgs.password
+	if ([string]::IsNullOrEmpty($TheArgs.ZippedWalletLocation) -or [string]::IsNullOrEmpty($TheArgs.service))
+	{
+		$Problems += "Cannot continue because name of either service ('$TheService'
+    )  User ('$TheUID'), Password ('$ThePassword') or wallet ('$TheWallet') is not provided";
+	}
+	else
+	{
+		#the alias must be set to the path of your installed version of SQL Cmd
+	    if ($OracleCmdAlias -eq $null -or (!(Test-Path -Path $OracleCmdAlias)) )
+	    {
+		    $problems += "'$OracleCmdAlias' is not a valid path. You must have provided a path to Oracle''s sqlcl.exe as OracleCmdAlias in the ToolLocations.ps1 file in the resources folder"
+	    }
+	}
+	if ($problems.count -eq 0)
+	{
+		$TempSpoolOutputFile = "TempOutput$(Get-Random -Minimum 1 -Maximum 900).json"
+		$TempQueryFile = "TempInput$(Get-Random -Minimum 1 -Maximum 900).SQL"
+		$MaybeTiming = if ($timing) { "SET TIMING ON`n" }
+		else { '' };
+		$MaybeJSON = if ($simpleText) { '' }
+		else { "set sqlformat json`n" };
+		#do a command to set the output to JSON
+				<# the CLI picks up its commands from a local file called login.sql rather
+        than doing it at the command-line., and it reads its query from file too  #>
+		[System.IO.File]::WriteAllLines("$pwd\login.sql",@"
+$($MaybeJSON)$($MaybeTimingSET)SET TERMOUT OFF 
+SET VERIFY OFF
+SET FEEDBACK OFF
+set linesize 4000
+set long 4000
+set longchunksize 4000
+spool $TempSpoolOutputFile
+@$TempQueryFile
+spool off
+exit
+"@)
+		
+		if (!([string]::IsNullOrEmpty($FileBasedQuery))) #if we've been passed a file ....
+		{ $query = [System.IO.File]::ReadAllLines($FileBasedQuery) }
+		[System.IO.File]::WriteAllLines("$pwd\$TempQueryFile", $Query)
+		$env:SQLPATH = "$pwd"
+		cmd.exe /c @"
+`"$OracleCmdAlias`" -noupdates -S -L  -cloudconfig $TheWallet   $TheUID/$ThePassword@$Theservice
+"@
+		#we can't pass a query string directly so we have a file ...
+		If (Test-Path -Path "$pwd/$TempQueryFile")
+		{ Remove-Item "$pwd/$TempQueryFile" }
+		
+		#we have a file for the output too which we read in ...
+		If (Test-Path -Path "$pwd/$TempSpoolOutputFile")
+		{
+			#make it easier for the caller to read the error
+			$response = [IO.File]::ReadAllText("$pwd\$TempSpoolOutputFile") -ireplace '\d+? rows selected\.', '';
+			Remove-Item "$pwd\$TempSpoolOutputFile"
+		}
+	    If (Test-Path -Path "$pwd\login.sql")
+            {Remove-Item "$pwd\login.sql"}
+		if ($response -like 'Error*')
+		{ $Problems += " When connecting to oracle, we  had error $Response" }
+		if ($problems.count -gt 0)
+		{ @{ Error = $problems } | convertTo-json }
+		elseif ($response -like 'NULL*')
+		{ '' }
+		else
+		{ if (!($muted)) { ($response|convertfrom-json).results.items|convertTo-json } }
+	If (Test-Path -Path "$pwd\login.sql")
+        {Remove-Item "$pwd\login.sql"}
+	}
+}
+
+$ExecutePLSQLScript = {<# a Scriptblock way of accessing oracle via Oracle SQLcl to get a set of
+ JSON results without having to explicitly open a connection. it will take SQL files and queries 
+ and also take an array of queries and filenames for the results. 
+#>
+	Param ($Theargs,
+		#this is the same ubiquitous hashtable 
+
+		$Script = $null,
+		#a valid SqlCl script or a valid file path 
+
+		$Multiple = @()
+		
+	) # $ExecutePLSQLScript: (Don't delete this)
+	$problems = @();
+    $FilesToCleanUp = @()
+	#check to see that we have the requisites
+	$TheWallet = $TheArgs.ZippedWalletLocation;
+	$Theservice = $TheArgs.service
+	$TheUID = $TheArgs.uid
+	$ThePassword = $TheArgs.password
+	if ([string]::IsNullOrEmpty($TheArgs.ZippedWalletLocation) -or [string]::IsNullOrEmpty($TheArgs.service))
+	{
+		$Problems += "Cannot continue because name of either service ('$TheService'
+    )  User ('$TheUID'), Password ('$ThePassword') or wallet ('$TheWallet') is not provided";
+	}
+	else
+	{
+		if ([string]::IsNullOrEmpty($OracleCmdAlias))
+		{
+			$OracleSqlPath = Get-Command 'sql.exe' -ErrorAction Ignore
+			if ($OracleSqlPath -eq $null) #have you set the path
+			{
+				$problems += " please either provide a path for SqlCl or provide a OracleCmdAlias in the ToolLocations.ps1 file in the resources folder"
+			}
+			else
+			{
+				$OracleCmdAlias = $OracleSqlPath.Source #use the path 
+			}
+		}
+	}
+	if ($Multiple.count -gt 0)
+	{
+		$plSQLScript = $multiple | foreach -begin {
+			$FilesToCleanUp = @(); $Workfile =@"
+SET SQLFORMAT json
+SET PAGESIZE 0
+SET ECHO OFF
+SET TERMOUT OFF 
+SET VERIFY OFF
+SET FEEDBACK OFF
+set linesize 4000
+set long 4000
+set longchunksize 4000
+
+"@
+		} {
+			$eachQueryFile = "$env:Tmp\TempInput$(Get-Random -Minimum 1 -Maximum 900).SQL"
+			[System.IO.File]::writeAllLines($eachQueryFile, $_.SQL)
+			$FilesToCleanUp += $eachQueryFile
+			$Workfile = $Workfile + "spool $($_.ResultFile)`n@$eachQueryFile`nspool off`n"
+		} -End { $Workfile + "`nexit`n" }
+		
+		$TempQueryFile = "TempMultipleInput$(Get-Random -Minimum 1 -Maximum 900).SQL"
+        # write-warning " writing $plSQLScript to  $pwd\$TempQueryFile"
+		[System.IO.File]::writeAllLines("$pwd\$TempQueryFile", $plSQLScript)
+        $FinalscriptFile = "$pwd\$TempQueryFile"
+        $FilesToCleanUp+= "$pwd\$TempQueryFile"
+	}
+	
+	else #it is a simple string
+	{
+		if ([string]::IsNullOrEmpty($script))
+		{
+			$problems += "We need a script, please"
+		}
+		
+		else
+		{
+			if (!(Test-Path -Path $script -PathType Leaf -ErrorAction Ignore))
+			#if we've been not been passed a file ....
+			{
+				#we can't pass a query string directly so we have a file ...
+				$TempQueryFile = "TempInput$(Get-Random -Minimum 1 -Maximum 900).SQL"
+				[System.IO.File]::writeAllLines($TempQueryFile, $script)
+				$FinalscriptFile = $TempQueryFile;
+                $FilesToCleanUp+=$TempQueryFile
+			}
+			else { $FinalscriptFile = $script }
+			
+		}
+	}
+
+	if ($problems.count -eq 0)
+	{
+		$env:SQLPATH = "$pwd" #Use any local configuration you need
+		$cmd = "`"$OracleCmdAlias`"  -S -L  -noupdates  -cloudconfig $TheWallet $TheUID/$ThePassword@$Theservice @$FinalscriptFile`n"
+	    cmd.exe /c $cmd
+        
+ 	}
+
+    $FilesToCleanUp|foreach{
+        If (Test-Path -Path "$_")
+	        {
+                Remove-Item "$_"
+            }
+        }
+}
 <# 
 Note: now deprecated!
 This scriptblock allows you to save and load the shared parameters for all these 
@@ -594,7 +939,7 @@ $FetchAnyRequiredPasswords = {
 				if ([string]::IsNullOrEmpty($param1.RDBMS))
 				{ $SqlEncryptedPasswordFile = "$env:USERPROFILE\$($param1.uid)-$($escapedServer).xml" }
 				else
-				{ $SqlEncryptedPasswordFile = "$env:USERPROFILE\$($param1.uid)-$($escapedServer)-$($RDBMS).xml" }
+				{ $SqlEncryptedPasswordFile = "$env:USERPROFILE\$($param1.uid)-$($escapedServer)-$($param1.RDBMS).xml" }
 				# test to see if we know about the password in a secure string stored in the user area
 				if (Test-Path -path $SqlEncryptedPasswordFile -PathType leaf)
 				{
@@ -829,8 +1174,138 @@ $CheckCodeInMigrationFiles = {
 }
 
 
+<#This scriptblock checks the code in the pending files for any issues,
+using SQL Fluff to do all the work. It saves the report in a subdirectory 
+of the version directory of your project artefacts. It also reports back 
+in the $DatabaseDetails Hashtable. 
+#>
+$CheckFluffInPendingFiles = {
+	Param ($param1) # $CheckFluffInPendingFiles - (Don't delete this)
+	#you must set this value correctly before starting.
+	$Problems = @(); #our local problem counter
+	$Feedback = @();
+	$FilesProcessed = 0;
+	$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8';
+	#these are the post-shredding tidy-up substitutions in Regex form
+	$ValueAlterations = @(('(?m:^)\s{1,40}?\|', ''), ("`n", ''), ("`r", ''))
+    <#The Regex for slicing up each SQLFluff record. I've commented it to make it
+    easier to read #>
+	$TheRegex = @'
+(?m:^)(?#Get the line number
+)L: {1,5}(?<Line>\d{1,4}) {0,10}(?#
+Get the position (column]
+)\| {1,4}P: {1,10}(?<Position>\d{1,10}) {1,4}(?#
+Get the problem number
+)\| {1,4}(?<Problem>\w\S{1,5}) {1,4}(?#
+Find the description
+)\| {1,4}(?<Description>(?s:.){1,200}?(?=\n\w|\z))
+'@
+	$Warnings = @() #an array to collect up all the warnings
+	$ParsingErrors = @() #an array to store all the parsing errors
+	$CompleteProblemData = @() #an array to store all the issues
+	# to get the dialects, use sqlfluff.exe dialects
+	$Dialect = switch -Regex ($param1.RDBMS)
+	{
+		'sqlserver'     {
+			'tsql'
+		}
+		'postgresql'    {
+			'postgres'
+		}
+		'oracle'    {
+			'oracle'
+		}
+		'sqlite'	    {
+			'sqlite'
+		}
+		'mysql|mariadb'	{
+			'mysql'
+		}
+		default
+		{ 'Error' }
+	}
+	# check to make sure you have installed SQLFluff
+	if ($Dialect -eq 'Error')
+	{ $problems += "No SQL dialect specified by $($param1.RDBMS)" }
+	if ((Get-Command -WarningAction SilentlyContinue 'sqlfluff.exe').name -ne 'sqlfluff.exe')
+	{ $problems += "please install SQLFluff.exe using Python" }
+    <# now we get from flyway a list of all the migration files from the
+    info command and turn it into a PowerShell object #>	
+	$Migrations = Flyway info -outputType=json | convertfrom-json
+	if ($Migrations.error -ne $null)
+	{
+		# something wrong within Flyway. Need to deal with it
+		$problems += $Migrations.error.message
+	}
+	if ($Problems.Count -eq 0)
+	{
+        <# work through the list of files, using just the SQL Flies that are pending.
+        We wont do the successfully-applied files because it would upset Flyway 
+        if we were to alter them #>
+		$migrations.migrations | `
+		where { ![string]::IsNullOrEmpty($_.filepath) -and ($_.type -ieq 'SQL') -and ($_.state -ieq 'Pending') } | `
+		foreach -Begin { $filesProcessed = 0 } {
+			# of the right type of file.
+			$filesProcessed++;
+			$The_warning = '';
+			$TheVersion = $_.version; # the versio attached to the file
+			# we'll put each file into the version folder. You might want them in a different plce
+			$ReportLocation = "$($param1.reportLocation)\$TheVersion\reports"
+			if (-not (Test-Path "$ReportLocation"))
+			{ New-Item -ItemType Directory -Path "$ReportLocation" -Force }
+            <# you might need to provide other configuration information here
+              fix       Fix SQL files.
+              lint      Lint SQL files via passing a list of files or using stdin #>
+			$report = sqlfluff.exe lint --dialect $dialect "$($_.filepath)"
+			#collect any warnings you want listed
+			$Warnings += $report | where { $_ -ilike 'warning*' }
+			#write out the raw report
+			$report > "$ReportLocation\SQLFluff.rpt"
+			#Slice up the rather odd formatting and read it into powershell
+			#ConvertFrom-Regex is in the resources. It is for text-based data
+			$ThisFileAnalysis = ConvertFrom-Regex -source ($report -join "`r`n") `
+												  -TheRegex $TheRegex `
+												  -ValueAlterations $ValueAlterations
+			if ($ThisFileAnalysis -eq $null)
+			{ $FluffProblems += "error converting $ReportLocation\SQLFluff.rpt to JSON" }
+			#add the current version so we know which file it was in etc.
+			$ThisFileAnalysis | foreach{
+				$_ | Add-Member -MemberType NoteProperty -Name 'Version' -Value $TheVersion
+			}
+			#Write out this list of psCustomObjects as a JSON file for later use
+			$ThisFileAnalysis | ConvertTo-Json >"$ReportLocation\SQLFluff.json"
+			#and build up a complete list for reporting
+			$CompleteProblemData += $ThisFileAnalysis
+		}
+		if ($filesProcessed -eq 0)
+		{ $FluffProblems += 'No pending migration files were found that could be run' }
+		#Report the complete list of issued
+		if ($CompleteProblemData.Count -eq 0) { $FluffProblems += 'empty JSON report ' }
+		else
+		{
+			$CompleteProblemData | convertTo-json > "$($param1.reportLocation)\FluffIssues.json"
+		}
+		#extract the parsing errors
+		$Fluffproblems = $CompleteProblemData | where { $_.Problem -notlike 'L*' }
+		$Fluffproblems | convertTo-json > "$($param1.reportLocation)\FluffProblems.json"
+		#Display parsing Errors.
+	}
+	if ($problems.Count -gt 0)
+	{
+		$Param1.Problems.'CheckFluffInPendingFiles' += $problems;
+	}
+	if ($FluffProblems.Count -gt 0)
+	{
+		$Param1.warnings.'CheckFluffInPendingFiles' += $FluffProblems;
+	}
+	$Param1.feedback.'CheckFluffInPendingFiles' += $Feedback
+	$Param1.WriteLocations.'CheckFluffInPendingFiles' = "$($param1.reportLocation)\FluffProblems.json";
+}
+
+
 <#This scriptblock gets the current version of a flyway_schema_history data from the 
 table in the database. if there is no Flyway Data, then it returns a version of 0.0.0
+
  #>
 $GetCurrentVersion = {
 	Param ($param1) # $GetCurrentVersion parameter is a hashtable 
@@ -845,20 +1320,25 @@ $GetCurrentVersion = {
 	}
 	$flywayTable = $Param1.flywayTable
 	if ($flywayTable -eq $null)
-	{ $flywayTable = 'dbo.flyway_schema_history' }
+	{ $flywayTable = 'dbo.[flyway_schema_history]' }
 	$Version = 'unknown'
+    $AllVersions=@{}
+    $LastAction=@{}
+
 	if ($param1.RDBMS -eq 'sqlserver')
 	{
 		# Do it the SQL Server way.
 		$AllVersions = $GetdataFromSQLCMD.Invoke(
-			$param1, "SELECT DISTINCT version
+			$param1, "
+    SELECT DISTINCT version
       FROM $flywayTable
       WHERE version IS NOT NULL
     FOR JSON AUTO") |
 		convertfrom-json
 		$LastAction = $GetdataFromSQLCMD.Invoke(
-			$param1, "SELECT version, type
-      FROM $flywayTable
+			$param1, "
+    SELECT version, type
+          FROM $flywayTable
       WHERE
       installed_rank =
         (SELECT Max (installed_rank) FROM $flywayTable
@@ -882,7 +1362,7 @@ $GetCurrentVersion = {
       FROM $($param1.flywayTable)
       WHERE
       installed_rank =
-        (SELECT Max (installed_rank) FROM $($param1.flywayTable)
+        (SELECT Max (installed_rank) FROM $flywayTable
            WHERE success = true))e;
     " | convertfrom-json
 	} ## OK, lets do it the SQLite way.
@@ -899,7 +1379,7 @@ $GetCurrentVersion = {
       FROM $($param1.flywayTable)
       WHERE
       installed_rank =
-        (SELECT Max (installed_rank) FROM $($param1.flywayTable)
+        (SELECT Max (installed_rank) FROM $flywayTable
            WHERE success = 1)
     ") | convertfrom-json
 	}
@@ -916,10 +1396,49 @@ $GetCurrentVersion = {
       FROM $($param1.flywayTable)
       WHERE
       installed_rank =
-        (SELECT Max(installed_rank) FROM $($param1.flywayTable)
+        (SELECT Max(installed_rank) FROM $flywayTable
            WHERE success = true);
     " | convertfrom-json
-	} 
+	}
+    elseif ($param1.RDBMS -eq 'oracle')
+	{
+    $ExecutePLSQLScript.invoke($param1, $null, @(
+		@{
+			ResultFile = 'AllVersions.json';
+			SQL =@"
+SELECT DISTINCT `"version`"
+        FROM $flywayTable
+      WHERE `"version`" IS NOT NULL;
+"@
+		},
+		@{
+			ResultFile = 'LastAction.json';
+			SQL =@"
+SELECT `"version`", `"type`"
+      FROM $flywayTable
+      WHERE
+      `"installed_rank`" =
+        (SELECT Max(`"installed_rank`") FROM $flywayTable
+           WHERE `"success`" = 1);
+"@
+		 }))
+        $response = get-content allversions.json
+        if (($Response -join '') -like 'error*')
+        { $allversions.error=$Response -join ' ' }
+        else
+        { $allversions = ($response | convertfrom-json).results.items }
+        $response = get-content LastAction.json
+        if (($Response -join '') -like 'error*')
+        { $LastAction.error= $Response -join ' ' }
+        else
+        { $LastAction = ($response | convertfrom-json).results.items }
+        @('allversions.json', 'LastAction.json') | foreach{
+	        If (Test-Path -Path "$_")
+	        {
+		        Remove-Item "$_"
+	        }
+        }
+	}
 	else { $problems += "$($param1.RDBMS) is not supported yet. " }
 	if ($AllVersions.error -ne $null) { $problems += $AllVersions.error }
 	if ($LastAction.error -ne $null) { $problems += $LastAction.error }
@@ -928,8 +1447,8 @@ $GetCurrentVersion = {
     $version = '0.0.0'; $previous = '0.0.0'
 	if ($problems.count -eq 0)
 	{
-		$OrderedVersions = $AllVersions | %{
-			new-object System.Version ($_.version)
+		$OrderedVersions = $AllVersions.version | foreach{
+			new-object System.Version ($_)
 		} |
 		sort | % -Begin { $ii = 1 }{
 			[pscustomobject]@{ 'Order' = $ii++; 'version' = $_.ToString() }
@@ -998,6 +1517,16 @@ FOR JSON PATH
 '@ | Convertfrom-json
 			$Param1.ServerVersion = $Version.version
 		}
+        'oracle'
+        {
+        
+			# Do it the oracle way
+			$Version = Execute-SQL $param1 'SELECT BANNER FROM v$version;' | Convertfrom-json
+			$Param1.ServerVersion =  $Version[1].banner
+
+        }    
+
+
 		'postgresql'
 		{
 			# Do it the PostgreSQL way
@@ -1090,6 +1619,8 @@ $IsDatabaseIdenticalToSource = {
 				"/Password2:$($param1.pwd)"
 			)
 		}
+        #we don't want the schema history table
+        $schemaAndName=$param1.flywayTable -split '\.';
 		if ($param1.'filterpath' -ne $NULL) #add the arguments for compare filters
 		{
 			$CLIArgs += @(
@@ -1099,7 +1630,8 @@ $IsDatabaseIdenticalToSource = {
 		else
 		{
 			$CLIArgs += @(
-				"/exclude:table:$($param1.flywayTable)",
+                
+				"/exclude:table:$(( $schemaAndName[1],$schemaAndName[0] -ne $null)[0])",
 				'/exclude:ExtendedProperty') #trivial}
 		}
 	}
@@ -1139,14 +1671,14 @@ $IsDatabaseIdenticalToSource = {
 	if ($warnings.Count -gt 0)
 	{ $Param1.Warnings.'IsDatabaseIdenticalToSource' += $Warnings; }
 }
-
+# $param1=$dbDetails
 <#this routine checks to see if a script folder already exists for this version
 of the database and, if not, it will create one and fill it with subdirectories
 for each type of object. A tables folder will, for example, have a file for every table
 each containing a  build script to create that object.
 When this exists, it allows SQL Compare to do comparisons and check that a version has not
 drifted.
-$param1=$dbdetails  #>
+ #>
 $CreateScriptFoldersIfNecessary = {
 	Param ($param1) # $CreateScriptFoldersIfNecessary 
 	$Problems = @(); #We check that it contains the keys for the values that we need 
@@ -1197,6 +1729,7 @@ $CreateScriptFoldersIfNecessary = {
 						"/Password1:$($param1.pwd)"
 					)
 				}
+                $schemaAndName=$param1.flywayTable -split '\.'
 				if ($param1.'filterpath' -ne $NULL) #add the arguments for compare filters
 				{
 					$CLIArgs += @(
@@ -1206,7 +1739,7 @@ $CreateScriptFoldersIfNecessary = {
 				else
 				{
 					$CLIArgs += @(
-						"/exclude:table:$($param1.flywayTable)",
+						"/exclude:table:$(( $schemaAndName[1],$schemaAndName[0] -ne $null)[0])",
 						'/exclude:ExtendedProperty') #trivial}
 				}
 				
@@ -1262,6 +1795,7 @@ $CreateScriptFoldersIfNecessary = {
 			'postgresql'
 			{
 				$command=$null;
+                #Remove-Item Alias:pg_dump
                 $command = get-command pg_dump -ErrorAction Ignore 
 				if ($command -eq $null)
 				{
@@ -1376,6 +1910,65 @@ $CreateScriptFoldersIfNecessary = {
 					$_.script > "$SchemaToStoreIt\$($_.name).sql"; #pop it into the file
 				}
 			}
+            'oracle'
+            {
+            
+            $TheListOfSchemas=($param1.schemas.split(',')|foreach  {"'$_'"}) -join ','
+            $TheJsonMetadata = Execute-SQL $param1  "
+select Object_type, owner||'.'||object_name as TheName, dbms_metadata.get_ddl(object_type, object_name, owner) as Thesource
+from
+(
+    select
+        owner,
+        --Java object names may need to be converted with DBMS_JAVA.LONGNAME.
+        --That code is not included since many database don't have Java installed.
+        object_name,
+        decode(object_type,
+            'DATABASE LINK',      'DB_LINK',
+            'JOB',                'PROCOBJ',
+            'RULE SET',           'PROCOBJ',
+            'RULE',               'PROCOBJ',
+            'EVALUATION CONTEXT', 'PROCOBJ',
+            'CREDENTIAL',         'PROCOBJ',
+            'CHAIN',              'PROCOBJ',
+            'PROGRAM',            'PROCOBJ',
+            'PACKAGE',            'PACKAGE_SPEC',
+            'PACKAGE BODY',       'PACKAGE_BODY',
+            'TYPE',               'TYPE_SPEC',
+            'TYPE BODY',          'TYPE_BODY',
+            'MATERIALIZED VIEW',  'MATERIALIZED_VIEW',
+            'QUEUE',              'AQ_QUEUE',
+            'JAVA CLASS',         'JAVA_CLASS',
+            'JAVA TYPE',          'JAVA_TYPE',
+            'JAVA SOURCE',        'JAVA_SOURCE',
+            'JAVA RESOURCE',      'JAVA_RESOURCE',
+            'XML SCHEMA',         'XMLSCHEMA',
+            object_type
+        ) object_type
+    from dba_objects 
+    where owner in ($TheListOfSchemas)
+        --These objects are included with other object types.
+        and object_type not in ('INDEX PARTITION','INDEX SUBPARTITION','SEQUENCE',
+            'LOB','LOB PARTITION','TABLE PARTITION','TABLE SUBPARTITION')
+        --Ignore system-generated types that support collection processing.
+        and not (object_type = 'TYPE' and object_name like 'SYS_PLSQL_%')
+        --Exclude nested tables, their DDL is part of their parent table.
+        and (owner, object_name) not in (select owner, table_name from dba_nested_tables)
+        --Exclude overflow segments, their DDL is part of their parent table.
+        and (owner, object_name) not in (select owner, table_name from dba_tables where iot_type = 'IOT_OVERFLOW')
+);
+            "
+#end
+            $scripts = $TheJsonMetadata | convertFrom-json
+            $scripts[1] | foreach{
+	            $object = $_;
+	            $SchemaToStoreIt = "$MyDatabasePath\$($object.object_type.ToLower())" #store it according to type
+	            if (-not (Test-Path "$SchemaToStoreIt" -PathType Container)) #make sure exzists
+	            { $null = New-Item -ItemType directory -Path "$SchemaToStoreIt" -Force }
+	            [System.IO.File]::WriteAllLines("$SchemaToStoreIt\$($object.thename).sql", $object.thesource);
+                }
+            }
+
 			default
 			{ $problems += "Sorry but a script folder isn''t supported from your RDBMS $($param1.RDBMS)" }
 		}
@@ -1399,13 +1992,28 @@ $CreateScriptFoldersIfNecessary = {
 
 <# 
 a script block that produces a build script from a database, using SQL Compare, pg_dump or whatever.
-$param1=$dbDetails #>
+
+#>
 
 $CreateBuildScriptIfNecessary = {
 	Param ($param1) # $CreateBuildScriptIfNecessary (Don't delete this) 
 	$problems = @();
     $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
-	@('version', 'server', 'database', 'project') |
+    Trap
+        {
+	        # Handle the error
+	        $err = $_.Exception
+	        $problems += $err.Message
+	        while ($err.InnerException)
+	        {
+		        $err = $err.InnerException
+		        $problems += $err.Message
+	        };
+            $Param1.Problems.'CreateBuildScriptIfNecessary' += $problems;
+	        # End the script.
+	        break
+        }
+    @('version', 'server', 'database', 'project') |
 	foreach{ if ($param1.$_ -in @($null, '')) { $Problems += "no value for '$($_)'" } }
 
 	#the database scripts path would be up to you to define, of course
@@ -1463,6 +2071,7 @@ $CreateBuildScriptIfNecessary = {
 						"/Password1:$($param1.pwd)"
 					)
 				}
+                $schemaAndName=$param1.flywayTable -split '\.'
                 if ($param1.'filterpath' -ne $NULL) #add the arguments for compare filters
 		        {
 			        $CLIArgs += @(
@@ -1472,12 +2081,12 @@ $CreateBuildScriptIfNecessary = {
                 else
                     {
                     $CLIArgs += @(
-                      "/exclude:table:$($param1.flywayTable)")
+                     "/exclude:table:$(( $schemaAndName[1],$schemaAndName[0] -ne $null)[0])")
 		        } 
 				
 				# if it is done already, then why bother? (delete it if you need a re-run for some reason 	
 				Sqlcompare @CLIArgs #run SQL Compare with splatted arguments
-				if ($?) { $Param1.WriteLocations.'CreateBuildScriptIfNecessary'="Written build script for $($param1.Project) $($param1.Version) to $MyDatabasePath"
+				if ($?) { $Param1.feedback.'CreateBuildScriptIfNecessary'="Written build script for $($param1.Project) $($param1.Version) to $MyDatabasePath"
                 Copy-Item -Path "$MyDatabasePath\V$($param1.Version)__Build.sql" -Destination "$MyCurrentPath\current__Build.sql"
                 }
 				else # if no errors then simple message, otherwise....
@@ -1510,9 +2119,10 @@ $CreateBuildScriptIfNecessary = {
                     "--file=$MyDatabasePath\V$($param1.Version)__Build.sql",
                     '--encoding=UTF8',
                     '--schema-only')
-                 pg_dump @Params 
+                 pg_dump  @Params 
 				if ($?) 
-                { $Param1.feedback.'CreateBuildScriptIfNecessary'="Written PG build script for $($param1.Project) $($param1.Version) to $MyDatabasePath" 
+                { 
+                $Param1.feedback.'CreateBuildScriptIfNecessary'="Written PG build script for $($param1.Project) $($param1.Version) to $MyDatabasePath" 
                 Copy-Item -Path "$MyDatabasePath\V$($param1.Version)__Build.sql" -Destination "$MyCurrentPath\current__Build.sql" -Force
                 }
 				else # if no errors then simple message, otherwise....
@@ -1533,7 +2143,6 @@ $CreateBuildScriptIfNecessary = {
                         {$problems += 'You must have provided a path to mysqldump.exe in $MySQLDumpAlias the ToolLocations.ps1 file in the resources folder'}
                     }            else
                 {
-                #$param1=$dbDetails
                 powershell.exe "mysqldump --host=$($param1.server) --port=$($param1.Port -replace '[^\d]','')  --password=$($param1.pwd) --user=$($param1.uid) --no-data --databases $($param1.schemas -replace ',',' ')" > "$MyDatabasePath\V$($param1.Version)__Build.sql"
                 Copy-Item -Path "$MyDatabasePath\V$($param1.Version)__Build.sql" -Destination "$MyCurrentPath\current__Build.sql" -Force
                } 
@@ -1997,6 +2606,9 @@ SELECT Object_Schema_Name (tables.object_id) + '.' + tables.name AS "TableObject
   FOR JSON auto, INCLUDE_NULL_VALUES
 "@
 		}
+ Default{
+      $problems+="Sorry but $($param1.RDBMS) is not implemented yet"
+      }
 	}
 	if ($problems.Count -eq 0)
 	{
@@ -2049,30 +2661,46 @@ To run this, you need to provide values for
 'project', The name of the whole project for the output filenames
 'RDBMS', the rdbms being used, e.g. sqlserver, mysql, mariadb, postgresql, sqlite
 'schemas', the schemas to be used to create the model
-'flywayTable' the name and schema of the flyway table 
-$param1=$DBDetails*/#>
+'flywayTable' the name and schema of the flyway table
+/#>
 $SaveDatabaseModelIfNecessary = {
 	Param ($param1,
 		$MyOutputReport = $null,
 		$MyCurrentReport = $null,
 		$MyModelPath = $null) # $SaveDatabaseModelIfNecessary - dont delete this
-	$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8' #we'll be using out redirection
+ 	$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8' #we'll be using out redirection
 	$problems = @() #none yet!
+   Trap
+    {
+	    # Handle the error
+	    $err = $_.Exception
+	    $problems += $err.Message
+	    while ($err.InnerException)
+	    {
+		    $err = $err.InnerException
+		    $problems += $err.Message
+	    };
+        $Param1.Problems.'SaveDatabaseModelIfNecessary' += $problems;
+	    # End the script.
+	    break
+    }
+
 	$feedback = @();
 	$AlreadyDone = $false;
 	#check that you have the  entries that we need in the parameter table.
-	$Essentials = @('server', 'database', 'RDBMS', 'schemas', 'flywayTable')
+	$Essentials = @('server', 'database', 'RDBMS', 'flywayTable')
+    if ($param1.RDBMS -ne 'sqlite'){$Essentials +='schemas'}
 	$WeHaveToCalculateADestination = $false; #assume default report locations
 	if ($MyOutputReport -eq $null -or $MyCurrentReport -eq $null -or $MyModelPath -eq $null)
 	{
 		#slightly less required for an ad-hoc model.
-		$Essentials += @('version', 'project', 'Reportdirectory')
+		$Essentials += @('project', 'Reportdirectory');
 		$WeHaveToCalculateADestination = $true;
 	}
 	
 	$Essentials | foreach{
 		if ([string]::IsNullOrEmpty($param1.$_))
-		{ $Problems += "no value for '$($_)'" }
+		{ $Problems += "no value for '$($_)' parameter in db Details" }
 	}
 	if ($WeHaveToCalculateADestination)
 	{# by default, we need to calculate destinations from the param1
@@ -2101,7 +2729,7 @@ $SaveDatabaseModelIfNecessary = {
 	$ListOfSchemas = ($param1.schemas -split ',' | foreach{ "'$_'" }) -join ',';
     
 	if ($param1.flywayTable -ne $null)
-	{ $FlywayTableName = ($param1.flywayTable -split '\.')[1] }
+	{ $FlywayTableName = (($param1.flywayTable -split '\.')[1]).Trim('"') }
 	else
 	{ $FlywayTableName = 'flyway_schema_history' }
 
@@ -2151,16 +2779,35 @@ $SaveDatabaseModelIfNecessary = {
 					
             <# we get the list of different base types (obvious in SQLite but it can get tricky with other
             RDBMS  #>
+                    $TheSchema=(split-path $param1.database -Leaf).replace('.sqlite3','')
 					$THeTypes = $TablesAndViews | Select type -Unique #|foreach{$_.type}
             <# OK. we now have to assemble all this into a model that is as human-friendly as possible  #>
-					$SchemaTree = @{ } <# This will become our model of the schema. Fist we put in
+					$SchemaTree =@{$TheSchema=@{}; } <# This will become our model of the schema. Fist we put in
             all the types of relations  #>
-					$TheTypes | foreach{
-						$SchemaTree | add-member -NotePropertyName $_.type -NotePropertyValue @{ }
+ 					$TheTypes | foreach{
+						#$SchemaTree.database | add-member -notePropertyName $_.type -notePropertyValue @{ }
+                        $SchemaTree.$TheSchema += @{$_.type=@{ }}
 					}
+                    
+                    $TheRelationMetadata | Select type, object -Unique | foreach{
+						$type = $_.type;
+						$object = $_.object;
+                        $pk = @{ }
+						$TheColumnList = $TheRelationMetadata |
+						where {$_.type -eq $type -and $_.object -eq $object } -OutVariable pk |
+						   foreach{ $_.col }
+                        $SchemaTree.$TheSchema.$type += @{ $object = @{ 'columns' = $TheColumnList } }
+                        $primaryKey = $pk | Where { $_.pk -gt 0 } |
+						Sort-Object -Property pk |
+						Foreach{ [regex]::matches($_.col, '\A\S{1,80}').value }
+						if ($primaryKey.count -gt 0)
+						{
+							$SchemaTree.$TheSchema.$type.$object += @{ 'PrimaryKey' = $primaryKey }
+						}
+					} 
 					
-            <# now inject all the objects into the schema tree. First we get all the relations  #>
-					$TheRelationMetadata | Select type, object -Unique | foreach{
+            <# now inject all the objects into the schema tree. First we get all the relations  
+					$TheRelationMetadata | Select type, object -Unique | select -first 3| foreach{
 						$type = $_.type;
 						$object = $_.object;
 						$pk = @{ }
@@ -2168,15 +2815,15 @@ $SaveDatabaseModelIfNecessary = {
 						where { $_.type -eq $type -and $_.object -eq $object } -OutVariable pk |
 						foreach{ $_.col }
 						$primaryKey = @();
-						$SchemaTree.$type += @{ $object = @{ 'columns' = $TheColumnList } }
+						$SchemaTree.'database'.$type += @{ $object = @{ 'columns' = $TheColumnList } }
 						$primaryKey = $pk | Where { $_.pk -gt 0 } |
 						Sort-Object -Property pk |
 						Foreach{ [regex]::matches($_.col, '\A\S{1,80}').value }
 						if ($primaryKey.count -gt 0)
 						{
-							$SchemaTree.$type.$object += @{ 'PrimaryKey' = $primaryKey }
+							$SchemaTree.'database'.$type.$object += @{ 'PrimaryKey' = $primaryKey }
 						}
-					}
+					}#>
             <# now stitch in the indexes with their columns  #>
 					$indexes | Select table_name, index_name -Unique | foreach{
 						$indexedTable = $_.table_name
@@ -2184,14 +2831,15 @@ $SaveDatabaseModelIfNecessary = {
 						$columns = $indexes |
 						where{ $_.table_name -eq $indexedTable -and $_.index_name -eq $indexName } |
 						Sort-Object -Property seqno | Select -ExpandProperty column_name
-						$SchemaTree.table.$indexedTable.indexes += @{ $indexName = $columns }
+						$SchemaTree.$TheSchema.table.$indexedTable.indexes += @{ $indexName = $columns }
 					}
 					$SchemaTree | convertTo-json -depth 10 > "$MyOutputReport"
 					$SchemaTree | convertTo-json -depth 10 > "$MycurrentReport"
 					
 				} #end of SQLite version
 <# this is the section that creates a PostgreSQL Database Model based where
-possible on information schema #>				
+possible on information schema
+ #>				
 				'postgresql' {
 					#fetch all the relations (anything that produces columns)
 					$query = @"
@@ -2219,7 +2867,7 @@ possible on information schema #>
             ORDER BY columns.table_schema, columns.TABLE_NAME, ordinal_position
                 ) e;
 "@
-					$TheRelationMetadata = Execute-SQL $param1 $query | ConvertFrom-json
+					$TheRelationMetadata = Execute-SQL $param1 $query | ConvertFrom-json 
 					#now get the details of the routines
 					$query = @"
  SELECT json_agg(e) 
@@ -2277,7 +2925,7 @@ left outer join information_schema.table_constraints rel_tco
               AND tc.table_schema NOT IN ('pg_catalog','information_schema')
                 ) e;
 "@
-					$Constraints = Execute-SQL $param1 $query | ConvertFrom-json
+					$Constraints = Execute-SQL $param1 $query | ConvertFrom-json 
             <# Now get the details of all the indexes that aren't primary keys, including the columns,  #>
 					$indexes = Execute-SQL $param1 @"
             SELECT json_agg(e) 
@@ -2371,7 +3019,7 @@ left outer join information_schema.table_constraints rel_tco
 						{ $SchemaTree.$constraintSchema.table.$constrainedTable.$ConstraintType += @{ $constraintName = $columns } }
 						
 					}
-              <# now stitch in the constraints with their columns  #>
+              <# now stitch in the routines and their contents #>
 					$routines | Foreach {
 						$TheSchema = $_.schema;
 						$TheName = $_.name;
@@ -2410,7 +3058,7 @@ left outer join information_schema.table_constraints rel_tco
 					$SchemaTree | convertTo-json -depth 10 > "$MycurrentReport"
 				}
 <# this is the section that creates a MariaDB or MySQL Database Model based where
-possible on information schema $param1=$dbdetails
+possible on information schema 
  #>
 				'mysql|mariaDB' {
 					#create a delimited list for SQL's IN command
@@ -2600,11 +3248,286 @@ UNION ALL
 					$SchemaTree | convertTo-json -depth 10 > "$MyOutputReport"
 					$SchemaTree | convertTo-json -depth 10 > "$MycurrentReport"
 				}
+<# start of the oracle section #> 
+                'oracle'
+                {
+                	$ScriptsToExecute = @(
+		                @{
+			                ResultFile = 'Objects.json';
+			                SQL =@"
+                /*--- get list of objects ---*/
+                select obj.OBJECT_TYPE as "type", obj.OWNER as "schema"
+                from sys.all_objects obj
+                where obj.owner in ($ListOfSchemas)  
+                and object_type not in ('INDEX','SEQUENCE')
+                group by obj.object_type,obj.owner;
+"@
+		                }
+		                @{
+			                ResultFile = 'columns.json';
+			                SQL =@"
+                /*--- get all columns and their definitions ---*/
+                select col.column_id as "ordinal_position", col.owner as "schema",  type.The_Type as "type",
+                       col.table_name as "object", col.column_name as "column", 
+                       data_type||
+                case
+                when col.data_precision is not null and nvl(col.data_scale,0)>0 
+                    then '('||col.data_precision||','||col.data_scale||')'
+                when col.data_precision is not null and nvl(col.data_scale,0)=0 
+                    then '('||col.data_precision||')'
+                when col.data_precision is null and col.data_scale is not null 
+                    then '(*,'||col.data_scale||')'
+                when col.char_length>0 
+                    then '('||col.char_length|| 
+                        case col.char_used 
+                             when 'B' then ' Byte'
+                             when 'C' then ' Char'
+                             else null 
+                        end||')'
+                end||decode(nullable, 'N', ' NOT NULL') as "coltype"
+                from sys.all_tab_columns col
+                inner join 
+                    (Select Table_name, 'Table' as The_Type, owner
+                    from sys.all_tables
+                    union all 
+                    Select view_name, 'View',owner
+                    from sys.all_views)type
+                on col.owner = type.owner 
+                and col.table_name = type.table_name
+                where type.owner  in ('DBO','PEOPLE','ACCOUNTING') 
+                and  type.table_name <> '$FlywayTableName'
+                order by "schema", "object", "type", "ordinal_position";
+"@
+		                }
+		                @{
+			                ResultFile = 'routines.json';
+			                SQL =@"
+                /*--- get all routines ---*/
+                Select f.schema, f.name, f.type, f.definition, '' as "comment", 0 as "hash",
+                 LISTAGG(args.in_out || ' ' || args.data_type, '; ')
+                              WITHIN GROUP (ORDER BY position) as arguments
+                from (
+                select obj.owner as schema,
+                       obj.object_id,
+                       obj.object_name as name,
+                       obj.object_type as type,
+                       listagg(text) within group (order by line) as definition
+                from sys.all_objects obj
+                inner join sys.all_source source 
+                  on  source.owner=obj.owner 
+                  and source.name=obj.object_name and source.type=object_type
+                where obj.object_type in ('PROCEDURE','FUNCTION')
+                      and obj.owner in ($ListOfSchemas)  
+                      group by obj.owner, obj.object_id, obj.object_type, obj.object_name)f
+                left outer join sys.all_arguments args on args.object_id = f.object_id
+                left outer join (
+                      select object_id,
+                             object_name,
+                             data_type
+                      from sys.all_arguments
+                      where position = 1
+                ) ret on ret.object_id = f.object_id
+                       and ret.object_name = f.name
+                group by f.schema, f.name, f.type, f.definition;
+
+"@
+		                }
+		                @{
+			                ResultFile = 'constraints.json';
+			                SQL =@"
+                /* get all constraints and foreign key constraint targets */
+                Select cols.position as "ordinal_position", source.owner as "schema",source.table_name as "table_name", case source.constraint_type  when 'C' then 'check constraint' when 'P' then 'primary key' when 'F' then 'foreign key' when 'U' then 'unique key' 
+                        when 'R' then 'foreign_key' when 'V' then 'View Check option'  when 'O' then 'With read only' else source.constraint_type end  as "type", source.constraint_name, 
+                source.owner || '.' || source.table_name as Source_Table,cols.column_name as "column_name",
+                source.search_condition as "condition", 
+                case when source.constraint_type = 'R' then source.R_constraint_name else null end as target_Constraint, 
+                case when target.table_name is not null then target.owner || '.' || target.table_name else null end  as "referenced_table",
+                FKcols.column_name as "referenced_column_name"
+                from all_cons_columns cols
+                inner join  all_constraints source
+                on cols.TABLE_Name=source.table_name and cols.owner=source.owner  and source.constraint_name=cols.constraint_name
+                left outer join all_constraints target
+                on source.R_constraint_name =target.constraint_name and source.owner=target.owner 
+                left outer join all_cons_columns FKcols
+                on FKcols.TABLE_Name=target.table_name and FKcols.owner=target.owner and target.constraint_name=fkcols.constraint_name
+                where source.owner in ($ListOfSchemas)  
+                and source.table_name not like 'BIN$%'
+                and source.table_name not like '$FlywayTableName'
+                and source.constraint_name not like 'SYS%';
+"@
+		                }
+		                @{
+			                ResultFile = 'triggers.json';
+			                SQL =@"
+                /*--- get all Triggers ---*/
+                select trig.table_owner as "schema", trig.table_name as "Name", trig.owner as "triggerSchema",
+                       trig.trigger_name as "triggerName",  trig.trigger_type as "triggerType",
+                       trig.base_object_type as "baseObjectType", trig.triggering_event as "event", 
+                       trig.status as "status", trig.trigger_body as "script"       
+                from sys.all_triggers trig
+                inner join sys.all_tables tab on trig.table_owner = tab.owner
+                                                and trig.table_name = tab.table_name
+                where trig.owner in ($ListOfSchemas);
+"@
+		                }
+		                @{
+			                ResultFile = 'Indexes.json';
+			                SQL =@"
+                /*--- get all Indexes ---*/
+                select ind.index_name,
+                       ind_col.column_name,
+                       ind.index_type,
+                       ind.uniqueness as definition,
+                       ind.table_owner as schema,
+                       ind.table_name as table_name,
+                       ind.table_type as object_type,
+                       f.column_expression
+                from sys.all_indexes ind
+                inner join sys.all_ind_columns ind_col on ind.owner = ind_col.index_owner
+                                                    and ind.index_name = ind_col.index_name
+                LEFT JOIN all_ind_expressions f
+                 ON   ind_col.index_owner     = f.index_owner
+                 AND  ind_col.index_name      = f.index_name
+                 AND  ind_col.table_owner     = f.table_owner
+                 AND  ind_col.table_name      = f.table_name
+                 AND  ind_col.column_position = f.column_position
+                where ind.table_owner like 'DBO'
+                and ind.table_name not like '$FlywayTableName'
+                order by ind.table_owner,
+                         ind.table_name,
+                         ind.index_name,
+                         ind_col.column_position;
+"@
+		                }
+	                )
+	                $ExecutePLSQLScript.invoke($param1, $null, $ScriptsToExecute)
+	                $TheTypes = ([IO.File]::ReadAllText("$pwd/objects.json") | convertfrom-json).results.items
+	                $TheRelationMetadata = ([IO.File]::ReadAllText("$pwd/columns.json") | convertfrom-json).results.items
+	                $constraints = ([IO.File]::ReadAllText("$pwd/constraints.json") | convertfrom-json).results.items
+	                $indexes = ([IO.File]::ReadAllText("$pwd/indexes.json") | convertfrom-json).results.items
+	                $routines = ([IO.File]::ReadAllText("$pwd/routines.json") | convertfrom-json).results.items
+
+                    @("$pwd\objects.json","$pwd\columns.json","$pwd\constraints.json",
+                    "$pwd\indexes.json","$pwd\routines.json","$pwd\triggers.json") | foreach{
+	                    If (Test-Path -Path "$_")
+	                    {
+		                    Remove-Item "$_"
+	                    }
+                    }	
+                           <# RDBMS  #>
+                            <# OK. we now have to assemble all this into a model that is as human-friendly as possible  #>
+	                $SchemaTree = @{ } <# This will become our model of the schema. Fist we put in
+                            all the types of relations  #>
+	
+	
+	                $TheTypes | Select -ExpandProperty schema -Unique | foreach{
+		                $TheSchema = $_;
+		                $ourtypes = @{ }
+		                $TheTypes | where { $_.schema -eq $TheSchema } | Select -ExpandProperty type | foreach{ $OurTypes += @{ $_ = @{ } } }
+		                $SchemaTree | add-member -NotePropertyName $TheSchema -NotePropertyValue $OurTypes
+		
+	                }
+	
+                            <# now inject all the objects into the schema tree. First we get all the relations  #>
+	                $TheRelationMetadata | Select schema, type, object -Unique | foreach{
+		                $schema = $_.schema;
+		                $type = $_.type;
+		                $object = $_.object;
+		                $TheColumnList = $TheRelationMetadata |
+		                where { $_.schema -eq $schema -and $_.type -eq $type -and $_.object -eq $object } -OutVariable pk |
+		                Sort-Object -Property ordinal_position |
+		                foreach{ "$($_.column) $($_.coltype)" }
+		                $SchemaTree.$schema.$type += @{ $object = @{ 'columns' = $TheColumnList } }
+	                }
+	
+                            <# now stitch in the constraints with their columns  #>
+	                $constraints | Select schema, table_name, Type, constraint_name, referenced_table -Unique | foreach{
+		                $constraintSchema = $_.schema;
+		                $constrainedTable = $_.table_name;
+		                $constraintName = $_.constraint_name;
+		                $ConstraintType = $_.type;
+		                $referenced_table = $_.referenced_table;
+		                # get the original object
+		                $OriginalConstraint = $constraints |
+		                where{
+			                $_.schema -eq $constraintSchema -and
+			                $_.table_name -eq $constrainedTable -and
+			                $_.Type -eq $ConstraintType -and
+			                $_.constraint_name -eq $constraintName
+		                } | Select -first 1
+		                $Columns = $OriginalConstraint | Sort-Object -Property ordinal_position |
+		                Select -ExpandProperty column_name
+		                if ($ConstraintType -eq 'foreign key')
+		                {
+			                $Referencing = $OriginalConstraint | Sort-Object -Property ordinal_position |
+			                Select -ExpandProperty referenced_column_name
+			                $SchemaTree.$constraintSchema.table.$constrainedTable.$ConstraintType += @{
+				                $constraintName = @{ 'Cols' = $columns; 'Foreign Table' = $referenced_table; 'Referencing' = "$Referencing" }
+			                }
+		                }
+		                else
+		                {
+			                $SchemaTree.$constraintSchema.table.$constrainedTable."$ConstraintType" += @{ $constraintName = $columns }
+		                }
+		
+	                }
+	
+                            <# now stitch in the indexes with their columns  #>
+	                $indexes | Select schema, table_name, Type, index_name, definition -Unique | foreach{
+		                $indexSchema = $_.schema;
+		                $indexedTable = $_.table_name;
+		                $indexName = $_.index_name;
+		                $definition = $_.definition;
+		                $columns = $indexes |
+		                where{
+			                $_.schema -eq $indexSchema -and
+			                $_.table_name -eq $indexedTable -and
+			                $_.index_name -eq $indexName
+		                } |
+		                Select -ExpandProperty column_name
+		                $SchemaTree.$indexSchema.table.$indexedTable.index += @{ $indexName = @{ 'Indexing' = $columns; 'def' = "$definition" } }
+	                }
+	                $routines | Foreach {
+		                $TheSchema = $_.schema;
+		                $TheName = $_.name;
+		                $TheType = $_.type;
+		                $TheHash = $_.hash;
+		                $Arguments = $_.arguments;
+		                $Thecomment = $_.comment;
+		                $TheDefinition = $_.definition;
+		                $Contents = @{ }
+		                if (!([string]::IsNullOrEmpty($TheDefinition))) { $Contents.'definition' = $TheDefinition }
+		                if ($TheType -ne 'table') { $Contents.'hash' = $Thehash }
+		                if (!([string]::IsNullOrEmpty($Thecomment))) { $Contents.'comment' = $TheComment }
+		                if ($SchemaTree.$TheSchema.$TheType.$TheName -eq $null)
+		                { $SchemaTree.$TheSchema.$TheType.$TheName = $Contents }
+		                else
+		                { $SchemaTree.$TheSchema.$TheType.$TheName += $Contents }
+		
+	                }
+		            $Triggers | Foreach {
+                        $Theschema= $_.schema;
+                        $Thename= $_.name;
+                        $Thetriggerschema= $_.triggerschema;
+                        $Thetriggername= $_.triggername;
+                        $Thetriggertype= $_.triggertype;
+                        $Thebaseobjecttype= $_.baseobjecttype;
+                        $Theevent= $_.event; 
+                        $Thestatus= $_.status; 
+                        $Thescript= $_.script;
+		                $Contents = @{'Name'=$Thetriggername; 'Type'=$Thetriggertype;
+                        'event'=$Theevent;'status'=$Thestatus; 'script'=$Thescript};
+     	                $SchemaTree.$TheSchema.$Thebaseobjecttype.$Thename.'trigger' = $Contents
+	                    }	
+	
+	                $SchemaTree | convertTo-json -depth 10 > "$MyOutputReport"
+	                $SchemaTree | convertTo-json -depth 10 > "$MycurrentReport"
+                }
 				
 <# this is the section that creates a SQL Server Database Model based where
 possible on information schema #>
 				'sqlserver'  {
-					#fetch all the relations (anything that produces columns) $param1=$dbDetails
+					#fetch all the relations (anything that produces columns)
 					$query = @"
 SELECT ParentObjects.[Schema] AS "Schema", ParentObjects.type,
        ParentObjects.Name,
@@ -2940,23 +3863,65 @@ FOR JSON auto
 				}
 			}
 			#Final things to do: Break up the model into individual objects, in different folders depending on type
+            #while we are about it, we'll do the table manifest
 			if (Test-Path "$MyOutputReport" -PathType leaf)
 			{
-				$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8' #we'll need it
-				$Model = [IO.File]::ReadAllText("$MyOutputReport") | ConvertFrom-JSON
-				$model.psobject.Properties |
-				foreach{ $schema = $_.Name; $_.Value.psobject.Properties } |
-				Foreach{ $Type = $_.Name.ToLower(); $_.Value.psobject.Properties } |
-				foreach{
-					$objectName = $_.Name;
-					$WhereToStoreIt = "$MyModelPath\$type"
-					if (-not (Test-Path "$WhereToStoreIt" -PathType Container))
-					{ $null = New-Item -ItemType directory -Path "$WhereToStoreIt" -Force }
-					$_.Value | convertto-json > "$WhereToStoreIt\$schema.$objectName.json"
-					Copy-Item -Path "$MyModelPath" -Destination "$MyCurrentPath" -Recurse -Force
-				}
-				$feedback += "written object-level model to $MyModelPath"
+			$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8' #we'll need it
+			$Model = [IO.File]::ReadAllText("$MyOutputReport") | ConvertFrom-JSON
+			$model.psobject.Properties |
+			foreach{ $schema = $_.Name; $_.Value.psobject.Properties } |
+			Foreach{ $Type = $_.Name.ToLower(); $_.Value.psobject.Properties } |
+			foreach{
+				$objectName = $_.Name;
+				$WhereToStoreIt = "$MyModelPath\$type"
+				if (-not (Test-Path "$WhereToStoreIt" -PathType Container))
+				{ $null = New-Item -ItemType directory -Path "$WhereToStoreIt" -Force }
+				$_.Value | convertto-json > "$WhereToStoreIt\$schema.$objectName.json"
+				Copy-Item -Path "$MyModelPath" -Destination "$MyCurrentPath" -Recurse -Force
 			}
+			$feedback += "written object-level model to $MyModelPath"
+			
+            #now do the table manifest
+            #calculate the path to save the manifest to
+            $MyManifestPath="$(split-path -Path $MyOutputReport -Parent)\TableManifest.txt";
+            #get all the foreign key references
+            $TableReferences = Display-Object $Model | where { $_.path -like '$*.*.table.*.Foreign key.*' } | foreach{
+	            $Splitpath = ($_.Path -split '\.')
+	            $References = $_.value.'Foreign Table'; $Table = "$($Splitpath[1]).$($Splitpath[3])";
+	            [pscustomObject]@{ 'referencing' = $Table; 'references' = $references }
+            }
+            $ObjectsToBuild = Display-Object $Model -reportNodes $true | where {
+                 ($_.path -split '\.').count -eq 4 
+                 } | select Path # get all the objects (for later full manifests)
+            $Tables = $ObjectsToBuild | where { $_.path -like '$*.*.table.*' } | foreach {
+	            $Splitpath = ($_.Path -split '\.'); "$($Splitpath[1]).$($Splitpath[3])"
+            }
+            #now we work out the dependency order. First we put in the tables that aren't being
+            #referenced by anything
+            $TablesInDependencyOrder = $Tables | where { $_ -notin $TableReferences.referencing }
+            $ii = 10;
+            do #add tables  their dependent 
+            {
+	            $PreviousCount = $TablesInDependencyOrder.count #$tables.count
+	            $NotYetPicked = $Tables | where { $_ -notin $TablesInDependencyOrder }
+	            $TablesInDependencyOrder += $NotYetPicked | where {
+		            $_  -notin  ($NotyetPicked | foreach{
+				            $notpicked = $_; $TableReferences | where {
+					            $_.Referencing -eq $notpicked
+				            }
+			            } |
+			            where {
+				            $_.references -notin $TablesInDependencyOrder
+			            } | Select -ExpandProperty referencing)
+	            }
+	            $ii--;
+            }
+            while (($TablesInDependencyOrder.count -lt $Tables.count) -and ($ii -gt 0))
+            if ($TablesInDependencyOrder.count -ne $Tables.count)
+            { Throw 'could not get tables in dependency order' }
+            $TablesInDependencyOrder > $MyManifestPath #and save the manifest
+            $feedback += "written table manifest  to $MyManifestPath"
+            }
 		}
 		catch { $problems += "$($PSItem.Exception.Message)" }
 	}
@@ -2985,6 +3950,129 @@ FOR JSON auto
 	
 }
 
+$ExtractFromSQLServerIfNecessary = {
+	Param ($param1,
+		$OutputType, <# {DacPac|File|Flat|ObjectType|Schema|SchemaObjectType} #>
+		$RedoIt = $false,
+		$doDiagnostics = $false
+	) # $ExtractFromSQLServerIfNecessary (Don't delete this) 
+	$problems = @(); # well, not yet
+	$feedback = @(); # well, nothing yet
+	if ($doDiagnostics -eq $null) { $doDiagnostics = $False }
+	if ($OutputType -notin ('DacPac', 'File', 'Flat', 'ObjectType', 'Schema', 'SchemaObjectType'))
+	{
+		$OutputType = 'DACPAC'; # 'DacPac'
+    }
+	#check that we have values for the necessary details
+	@('version', 'server', 'database', 'project') |
+	foreach{ if ($param1.$_ -in @($null, '')) { $Problems += "no value for '$($_)'" } }
+	$command = get-command sqlpackage -ErrorAction Ignore
+	if ($command -eq $null)
+	{
+		if ($SQLPackageAlias -ne $null)
+		{ Set-Alias sqlpackage   $SQLPackageAlias }
+		else
+		{ $problems += 'You must have provided a path to $SQLPackage.exe in the ToolLocations.ps1 file in the resources folder' }
+	} #the database scripts path would be up to you to define, of course
+	$VersionsPath = if ([string]::IsNullOrEmpty($param1.VersionsPath)) { 'Versions' }
+	else { "$($param1.VersionsPath)" }
+	$EscapedProject = ($Param1.project.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') -ireplace '\.', '-'
+    <# The SqlPackage Extract action creates a schema of a connected database in a
+     DACPAC file (.dacpac). By default, data is not included in the .dacpac file.
+     To include data, utilize the Export action or use the Extract properties
+     ExtractAllTableData/TableData.
+     /p:ExtractTarget:File extracts a SQL File
+     Specifies alternative output formats of the database schema, default is 'DacPac'
+     to output a .dacpac single file. Additional options output one or more .sql files
+     organized by either 'SchemaObjectType' (files in folders for each schema and
+     object type), 'Schema' (files in folders for each schema), 'ObjectType'
+     (files in folders for each object type), 'Flat' (all files in the same folder),
+     or 'File' (1 single file).
+      #>
+	# objectType SchemaObjectType, schema and flat create a directory. File creates a file
+	$ReportDirectory = "$($param1.reportLocation)\$($param1.Version)\";
+	$OutputFile = "$ReportDirectory$($EscapedProject)$($param1.Version)-$OutputType.dacpac"
+	$ExtractArguments = @("/Action:Extract", <#
+         Specifies a source file to be used as the source of action instead of a
+         database. For the Publish and Script actions, SourceFile may be a .dacpac
+         file or a schema compare .scmp file. If this parameter is used, no other
+         source parameter is valid. #>
+		"/TargetFile:$Outputfile",
+    <#  Specifies a target file to be used for the dacpac #>
+		"/p:ExtractAllTableData=true",
+		"/p:ExtractTarget=$OutputType",
+		"/p:VerifyExtraction=true",
+		"/p:DacApplicationDescription=$($param1.projectDescription)",
+		"/p:DacApplicationName=$($param1.database)-[$($param1.version)]",
+		"/SourcePassword:$($param1.pwd)",
+    <#   For SQL Server Auth scenarios, defines the password to use to access the
+         Source database. (short form /sp) #>
+		"/SourceServerName:$($param1.Server)", <#
+         Defines the name of the server hosting the source database. (short form
+         /ssn) #>
+		"/SourceDatabaseName:$($param1.database)", <#
+         Specifies an override for the name of the database that is the source of
+         SqlPackage.exe Action. (short form /sdn) #>
+		"/SourceUser:$($param1.uid)"<#
+         For SQL Server Auth scenarios, defines the SQL Server user to use to
+         access the source database. (short form /su) #>
+		"/SourceTrustServerCertificate:true"
+	)
+	if ($DoDiagnostics)
+	{
+		$ExtractArguments += `
+		"/DiagnosticsFile:$ReportDirectory$($EscapedProject)$($param1.Version)$OutputType.log "
+	}
+	$ChangedOutput = $outputFile.Replace("-$OutputType.dacpac", ".$OutputType")
+    if ($ChangedOutput -eq $OutputFile){$Feedback+="$ChangedOutput is unchanged from $OutputFile"}
+	$AlreadyDone = (Test-Path $ChangedOutput)
+	if ($RedoIt -eq $false -and $AlreadyDone -eq $true)
+	{
+		$Feedback += "The $OutputType has already been created for $($EscapedProject) $($param1.Version)"
+	}
+	else
+	{
+		
+		if ($problems.Count -eq 0)
+		{
+			if (-not (Test-Path "$ReportDirectory" -PathType Container))
+			{ New-Item -ItemType directory -Path "$ReportDirectory" -Force }
+			else
+			{
+				if (Test-Path $OutputFile)
+				{ Remove-item $OutputFile }
+			}
+			
+			$console = sqlpackage $ExtractArguments | foreach{ "$_ `n" }
+			$Feedback += "$console"
+			if ($?) # if no errors then simple message, otherwise...
+			{
+				$NewOutputType = switch ($OutputType)
+				{
+					'File' { 'SQL' }
+					default { $OutputType }
+				}
+				$ChangedOutput = $outputFile.Replace("-$OutputType.dacpac", ".$NewOutputType")
+				if (Test-Path $ChangedOutput)
+				{ Remove-item $ChangedOutput }
+				
+				rename-item $outputFile $ChangedOutput
+				$Feedback += "Written $OutputType for $EscapedProject $($param1.Version) to $ChangedOutput"
+			}
+			else
+			{
+				#report a problem and send back the args for diagnosis (hint, only for script development)
+				$Problems += "SQLpackage Went badly. (code $LASTEXITCODE) with paramaters $ExtractArguments"
+			}
+		}
+	}
+	if ($problems.count -gt 0)
+	{ $Param1.Problems.'ExtractFromSQLServerIfNecessary' += $problems; }
+	if ($feedback.count -gt 0)
+	{ $Param1.feedback.'ExtractFromSQLServerIfNecessary' = $feedback }
+	
+}
+
 
 <# this creates a first-cut UNDO script for the metadata (not the data) which can
 be adjusted and modified quickly to produce an UNDO Script. It does this by using
@@ -3000,7 +4088,7 @@ $CreateUndoScriptIfNecessary = {
 	foreach{ if ($param1.$_ -in @($null,'')) { $Problems += "no value for '$($_)'" } }
     $command=$null;
     $command = get-command SQLCompare -ErrorAction Ignore
-    f ($command -eq $null) 
+    if ($command -eq $null) 
         {
     	if ($SQLCompareAlias-ne $null)
             {Set-Alias SQLCompare $SQLCompareAlias}
@@ -3054,6 +4142,7 @@ $CreateUndoScriptIfNecessary = {
 			    "/Password2:$($param1.pwd)"
 		    )
 	    }
+        $schemaAndName=$param1.flywayTable -split '\.'
          if ($param1.'filterpath' -ne $NULL) #add the arguments for compare filters
 		{
 			$CLIArgs += @(
@@ -3063,7 +4152,7 @@ $CreateUndoScriptIfNecessary = {
         else
             {
             $CLIArgs += @(
-              "/exclude:table:$($param1.flywayTable)")
+               "/exclude:table:$(( $schemaAndName[1],$schemaAndName[0] -ne $null)[0])")
 		} 
 	    if (-not (Test-Path -PathType Container $CurrentUndoPath))
 	    {
@@ -3147,6 +4236,7 @@ $CreatePossibleMigrationScript = {
 			"/Password1:$($param1.pwd)"
 		)
 	}
+    $schemaAndName=$param1.flywayTable -split '\.';
     if ($param1.'filterpath' -ne $NULL) #add the arguments for compare filters
 	{
 		$CLIArgs += @(
@@ -3156,7 +4246,7 @@ $CreatePossibleMigrationScript = {
     else
         {
         $CLIArgs += @(
-            "/exclude:table:$($param1.flywayTable)")
+             "/exclude:table:$(( $schemaAndName[1],$schemaAndName[0] -ne $null)[0])")
 	} 
 	if (-not (Test-Path -PathType Container $CurrentVersionPath))
 	{
@@ -3223,7 +4313,6 @@ SELECT Object_Schema_Name (object_id) AS [Schema], name
      is_ms_shipped = 0 AND name NOT LIKE 'Flyway%'
   FOR JSON AUTO
 "@) | ConvertFrom-Json
-		Write-verbose "Reading data in from $DirectoryToLoadFrom"
 		if ($Tables.Error -ne $null)
 		{
 			$internalLog += $Tables.Error;
@@ -3304,7 +4393,6 @@ SELECT Object_Schema_Name (object_id) AS [Schema], name
      is_ms_shipped = 0 AND name NOT LIKE 'Flyway%'
   FOR JSON AUTO
 "@) | ConvertFrom-Json
-	Write-verbose "Reading data in from $DirectoryToLoadFrom"
 	if ($Tables.Error -ne $null)
 	{
 		$internalLog += $Tables.Error;
@@ -3918,8 +5006,6 @@ Function GetorSetPassword{
 
 
 
-
-
     $PwdDetails= @{
         'RDBMS'=$RDBMS; #jdbc name. Only necessary for systems with several RDBMS on the same server
 	    'Server'=$server;
@@ -4060,6 +5146,7 @@ function Execute-SQL
 	$Scriptblock = switch ($DatabaseDetails.RDBMS)
 	{
 		'postgresql'   { $GetdataFromPsql }
+		'oracle'   { $GetdataFromOracle }
 		'sqlserver'  { $GetdataFromSQLCMD }
 		'sqlite' { $GetdataFromSqlite }
         'mariadb' { $GetdataFromMySQL }
@@ -4097,28 +5184,145 @@ function Execute-SQLStatement
 	(
 		[Parameter(Mandatory = $true,
 				   Position = 1)]
-		[System.Collections.Hashtable]$DatabaseDetails,
+		[System.Collections.Hashtable]$DatabaseDetails, #this is the same ubiquitous hashtable 
 		[Parameter(Mandatory = $true,
 				   Position = 2)]
-		[String]$Statement
+		[String]$Statement, #a query. If a file, put the path in the $fileBasedQuery parameter
+		[String]$fileBasedQuery = $null,
+		[boolean]$simpleText = $true,
+		[boolean]$timing = $false,
+		#do you return timing information
+		[boolean]$muted = $false #do you return the data       
 	)
 	
 	$Scriptblock = switch ($DatabaseDetails.RDBMS)
 	{
 		'postgresql'   { $GetdataFromPsql }
+		'oracle'   { $GetdataFromOracle }
 		'sqlserver'  { $GetdataFromSQLCMD }
 		'sqlite' { $GetdataFromSqlite }
         'mariadb' { $GetdataFromMySQL }
         'Mysql' { $GetdataFromMySQL }
         	}
 	$ErrorsSoFar = $Error.count
-	$Scriptblock.invoke($DatabaseDetails,$Statement,$null,$true) ;
+	$Scriptblock.invoke($DatabaseDetails,$Statement,$fileBasedQuery,$simpleText,$timing,$muted) ;
+	if ($Error.Count -gt $ErrorsSoFar)
+	{ 0 .. ($Error.Count - $ErrorsSoFar-1) | foreach{ Write-warning "$($error[$_])" } }
+}
+function Execute-SQLTimedStatement
+{
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory = $true,
+				   Position = 1)]
+		[System.Collections.Hashtable]$DatabaseDetails,
+		[Parameter(Mandatory = $true,
+				   Position = 2)]
+		[String]$Statement,
+
+       [Parameter(Mandatory = $true,
+				   Position = 3)]
+		[bool]$muted
+	)
+	
+	$Scriptblock = switch ($DatabaseDetails.RDBMS)
+	{
+		'postgresql'   { $GetdataFromPsql }
+		'oracle'   { $GetdataFromOracle }
+		'sqlserver'  { $GetdataFromSQLCMD }
+		'sqlite' { $GetdataFromSqlite }
+        'mariadb' { $GetdataFromMySQL }
+        'Mysql' { $GetdataFromMySQL }
+        default {throw "Sorry, we don't support $_ yet!"}
+        	}
+	$ErrorsSoFar = $Error.count
+	$Scriptblock.invoke($DatabaseDetails,$Statement,$null,$true,$true,$muted) ;
 	if ($Error.Count -gt $ErrorsSoFar)
 	{ 0 .. ($Error.Count - $ErrorsSoFar-1) | foreach{ Write-warning "$($error[$_])" } }
 }
 
+<#
+	.SYNOPSIS
+		Run the tests that are available
+	
+	.DESCRIPTION
+		Runs all the available and suitable tests in the directory
+	
+	.PARAMETER TheDetails
+		The DBDetails hashtable
+	
+	.PARAMETER ThePath
+		The path to the test directory you want
+	
+	.EXAMPLE
+				PS C:\> Run-TestsForMigration -TheDetails $value1 -ThePath 'Value2'
+	
+#>
+function Run-TestsForMigration
+{
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory = $true)]
+		[System.Collections.Hashtable]$DatabaseDetails,
+		[Parameter(Mandatory = $true)]
+		[string]$ThePath,
+		[Parameter(Mandatory = $false)]
+		[string]$Type = 'T',
+		[Parameter(Mandatory = $false)]
+		[string]$Script = 'ps1'
+	)
+    #check the report directory to make sure it exists
+	$OurReportDirectory = "$($DatabaseDetails.reportLocation)\$($DatabaseDetails.version)\reports\tests"
+	if (-not (Test-Path $OurReportDirectory -PathType Container))
+	{ New-Item -ItemType Directory -Path $OurReportDirectory -Force }
+	Dir "$ThePath\$($Type)*.$($Script)" -name |
+	foreach{
+		if ($_ -cmatch "\A(?m:^)$type(?<StartVersion>.*)-(?<EndVersion>.*)__(?<Description>.*)\.$Script\z")
+		{
+			@{
+				#turn blank strings into nulls so we can process underfined starts and ends properly
+				'StartVersion' = switch ($matches.StartVersion)
+				{
+					''{ $null }
+					Default { $_ }
+				};
+				'EndVersion' = switch ($matches.EndVersion)
+				{
+					''{ $null }
+					Default { $_ }
+				};
+				'Description' = $matches.Description.Replace('_', ' ');
+				'Filename' = $matches.0;
+			}
+		}
+		else
+		{ throw "could not parse $($_) with regex" }
+	} |
+	where {
+		[version]$DatabaseDetails.version -ge ($_.StartVersion, [version]'0.0.0.0' -ne $null)[0] -and
+		[version]$DatabaseDetails.version -lt ($_.EndVersion, [version]'999.0.0.0' -ne $null)[0]
+	} | foreach {
+		"executing $($_.Filename) ($($_.Description))"
+		# now we execute it
+		if ($Script -eq 'ps1') { $TestOutput = . "$ThePath\$($_.Filename)" }
+		elseif ($Script -eq 'sql')
+		{
+			if ($Type -eq 'P') 
+            # we run these with timings and with the results 'muted'
+            {$TestOutput = Execute-SQLStatement $DatabaseDetails '-' -fileBasedQuery "$ThePath\$($_.Filename)" -simpleText $true -timing $true -muted $true }
+            else
+            {$TestOutput = Execute-SQLStatement $DatabaseDetails '-' -fileBasedQuery "$ThePath\$($_.Filename)" }
+ 		}
+		$testOutput > "$OurReportDirectory\Report_$($_.Description).txt"
+		write-output $TestOutput
+	}
+}
 
 
-'FlywayTeamwork framework  loaded. V1.2.137'
+
+
+'FlywayTeamwork framework  loaded. V1.2.604'
 
 
